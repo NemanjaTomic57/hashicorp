@@ -2,4 +2,17 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
+<<<<<<< HEAD:vagrant/debian13_kafka/Vagrantfile
+=======
+<<<<<<< HEAD:vagrant/debian-13_kafka/Vagrantfile
+  config.vm.box = "debian-13"
+=======
+  config.vm.box = "bento/debian-13"
+  config.vm.box_version = "202510.26.0"
+
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "playbook.yml"
+  end
+>>>>>>> parent of 9ca39b1 (add debian13_kafka project):vagrant/debian13_kafka/Vagrantfile
+>>>>>>> 020ebd5 (Revert "add debian13_kafka project"):vagrant/debian-13_kafka/Vagrantfile
 end
