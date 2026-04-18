@@ -1,0 +1,72 @@
+---
+- name: Install apt dependencies
+  hosts: all
+  become: true
+  
+  tasks:
+
+    - name: Install common packages
+      ansible.builtin.apt:
+        name:
+          - build-essential
+          - libreadline-dev
+          - unzip
+        state: latest
+        
+    - name: Install git to latest version
+      ansible.builtin.apt:
+        name: git
+        state: latest
+
+    - name: Install luarocks
+      ansible.builtin.apt:
+        name: luarocks
+        state: latest
+
+    - name: Remove unused dependencies
+      ansible.builtin.apt:
+        autoremove: yes
+
+- name: Install Neovim manually (if not present)
+  hosts: all
+  become: true
+  vars:
+    nvim_archive: nvim-linux-x86_64.tar.gz
+    nvim_url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+    nvim_install_dir: /opt/nvim-linux-x86_64
+
+  tasks:
+
+    - name: Check if nvim is already installed
+      ansible.builtin.stat:
+        path: "{{ nvim_install_dir }}/bin/nvim"
+      register: nvim_installed
+
+    - name: Install Neovim
+      block:
+
+        - name: Download Neovim archive
+          ansible.builtin.get_url:
+            url: "{{ nvim_url }}"
+            dest: "/tmp/{{ nvim_archive }}"
+            mode: '0644'
+
+        - name: Remove existing Neovim directory
+          ansible.builtin.file:
+            path: "{{ nvim_install_dir }}"
+            state: absent
+
+        - name: Extract Neovim archive
+          ansible.builtin.unarchive:
+            src: "/tmp/{{ nvim_archive }}"
+            dest: /opt
+            remote_src: yes
+
+      when: not nvim_installed.stat.exists
+
+    - name: Add Neovim to global PATH
+      ansible.builtin.copy:
+        dest: /etc/profile.d/nvim.sh
+        content: 'export PATH="/opt/nvim-linux-x86_64/bin:$PATH"'
+        mode: '0755'
+
