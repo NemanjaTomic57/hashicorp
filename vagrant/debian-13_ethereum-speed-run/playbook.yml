@@ -1,33 +1,45 @@
 ---
-- name: Install apt dependencies
+- name: Update and upgrade all packages
   hosts: all
   become: true
-  
+
   tasks:
 
-    - name: Install common packages
-      ansible.builtin.apt:
-        name:
-          - build-essential
-          - libreadline-dev
-          - unzip
-          - git
-          - luarocks
-        state: latest
-        
-    - name: Remove unused dependencies
-      ansible.builtin.apt:
-        autoremove: yes
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        upgrade: dist
 
-- name: Install Neovim manually (if not present)
+- name: Install gnome desktop environment
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Install apt packages
+      apt:
+        name:
+          - gnome
+          - gdm3
+        state: latest
+
+- name: Install Neovim
   hosts: all
   become: true
   vars:
     nvim_archive: nvim-linux-x86_64.tar.gz
     nvim_url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
     nvim_install_dir: /opt/nvim-linux-x86_64
-
+  
   tasks:
+
+    - name: Install common packages
+      ansible.builtin.apt:
+        name:
+          - git
+          - luarocks
+        state: latest
 
     - name: Check if nvim is already installed
       ansible.builtin.stat:
@@ -62,3 +74,14 @@
         content: 'export PATH="/opt/nvim-linux-x86_64/bin:$PATH"'
         mode: '0755'
 
+- name: Configure Neovim
+  hosts: all
+  vars:
+    nvim_config_src: /home/nemo/.config/nvim/
+
+  tasks:
+
+    - name: Copy configurations
+      ansible.builtin.copy:
+        src: "{{ nvim_config_src }}"
+        dest: /home/vagrant/.config/nvim/
