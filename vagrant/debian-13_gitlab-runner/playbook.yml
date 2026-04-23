@@ -7,6 +7,7 @@
     gitlab_runner_binary: "https://s3.dualstack.us-east-1.amazonaws.com/gitlab-runner-downloads/latest/binaries/gitlab-runner-linux-amd64"
 
   tasks:
+
     - name: Set up Docker's apt repository
       ansible.builtin.script: ./docker.sh
 
@@ -25,7 +26,7 @@
         state: started
         enabled: yes
 
-    - name: Install GitLab binary
+    - name: Install GitLab Runner binary
       ansible.builtin.get_url:
         url: "{{ gitlab_runner_binary }}"
         dest: /usr/local/bin/gitlab-runner
@@ -53,9 +54,4 @@
         name: gitlab-runner
         state: started
         enabled: yes
-
-    - name: Copy config.toml to guest
-      ansible.builtin.copy:
-        src: ./config.toml
-        dest: /etc/gitlab-runner/config.toml
 
