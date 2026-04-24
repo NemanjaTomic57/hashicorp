@@ -1,24 +1,14 @@
 ---
-- name: Install npm dependencies
+- name: Update and upgrade all packages
   hosts: all
+  become: true
 
   tasks:
 
-    - name: Install apt dependencies
-      become: true
+    - name: Update apt cache
       apt:
-        name: npm
-        update_cache: true
-
-    - name: Copy workspace folder
-      copy:
-        src: ./workspace
-        dest: /home/vagrant
-        owner: vagrant
-
-    - name: Install npm dependencies
-      community.general.npm:
-        path: /home/vagrant/workspace
+        update_cache: yes
+        cache_valid_time: 3600
 
 - name: Install and configure Neovim
   hosts: all
@@ -37,7 +27,6 @@
         name:
           - git
           - luarocks
-        update_cache: true
 
     - name: Check if nvim is already installed
       ansible.builtin.stat:
@@ -78,3 +67,59 @@
       copy:
         src: "{{ nvim_config_src }}"
         dest: /home/vagrant/.config/nvim/
+
+- name: Install Neovim dependencies
+  hosts: all
+
+  vars:
+    go_version: 1.26.2
+
+  tasks:
+
+    - name: Install apt dependencies
+      become: true
+      apt:
+        name:
+          - python3-pip
+          - npm
+          - ruby-full
+          - php
+          - composer
+          - default-jdk
+          - ripgrep
+          - fd-find
+
+    - name: Install Rust (rustup)
+      shell: curl https://sh.rustup.rs -sSf | sh -s -- -y
+      args:
+        creates: /home/vagrant/.cargo/bin/cargo
+
+    - name: Add cargo to global PATH
+      become: true
+      copy:
+        dest: /etc/profile.d/rust.sh
+        content: 'export PATH="/home/vagrant/.cargo/bin:$PATH"'
+
+    - name: Download Go
+      get_url:
+        url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+        dest: /tmp/go.tar.gz
+
+    - name: Extract Go
+      become: true
+      unarchive:
+        src: /tmp/go.tar.gz
+        dest: /usr/local
+        remote_src: yes
+
+    - name: Add Go to PATH
+      become: true
+      copy:
+        dest: /etc/profile.d/go.sh
+        content: |
+          export PATH=$PATH:/usr/local/go/bin
+
+    - name: Install Julia
+      shell: curl -fsSL https://install.julialang.org | sh -s -- -y
+      args:
+        creates: /home/vagrant/.juliaup/bin/julia
