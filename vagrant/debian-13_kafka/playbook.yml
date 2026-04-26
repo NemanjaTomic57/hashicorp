@@ -1,10 +1,13 @@
 ---
 - name: Install and configure Kafka
   hosts: all
+
   vars:
+    # Installation
     kafka_url: https://downloads.apache.org/kafka/4.2.0/kafka_2.13-4.2.0.tgz
     kafka_archive: kafka_2.13-4.2.0.tgz
 
+    # Configuration
     kafka: /home/vagrant/kafka
     kafka_cluster_id: "{{ kafka }}/cluster.id"
     kafka_install_dir: "{{ kafka }}/kafka_2.13-4.2.0"
@@ -77,7 +80,7 @@
           register: kafka_uuid
 
         - name: Save cluster ID
-          copy:
+          ansible.builtin.copy:
             content: "{{ kafka_uuid.stdout }}"
             dest: "{{ kafka_cluster_id }}"
 
@@ -87,7 +90,7 @@
       ansible.builtin.command: "cat {{ kafka_cluster_id }}"
       register: kafka_uuid
 
-    - name: Initialize config directories
+    - name: Configure Kafka brokers
       ansible.builtin.command: >
         {{ kafka_bin}}/kafka-storage.sh format 
         -t {{ kafka_uuid.stdout }} 
