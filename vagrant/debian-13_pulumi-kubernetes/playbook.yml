@@ -1,0 +1,24 @@
+---
+- name: Install minikube
+  hosts: all
+
+  vars:
+    minikube_install: /tmp/minikube
+
+  tasks:
+
+    - name: Install apt dependencies
+      become: true
+      apt:
+        name:
+          - podman
+        update_cache: true
+    
+    - name: Install minikube 
+      become: true
+      shell: |
+        curl -Lo {{ minikube_install }} https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
+        install {{ minikube_install }} /usr/local/bin/minikube
+        rm {{ minikube_install }}
+      args:
+        creates: /usr/local/bin/minikube
