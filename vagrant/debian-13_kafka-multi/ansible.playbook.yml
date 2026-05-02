@@ -53,34 +53,25 @@
 
   tasks:
 
-    - name: Debug
-      ansible.builtin.debug:
-        msg: |
-          "hostname is {{ inventory_hostname }}"
+    - name: Clear data directory
+      ansible.builtin.file:
+        path: "{{ kafka_data }}"
+        state: absent
 
-    - name: Generate Kafka cluster ID
-      ansible.builtin.command: "{{ kafka_bin }}/kafka-storage.sh random-uuid"
-      when: inventory_hostname == kafka_nodes[0]
-      register: kafka_uuid
-      changed_when: false
+    - name: Create data directory
+      ansible.builtin.file:
+        path: "{{ kafka_data }}"
+        state: directory
+        mode: "0700"
 
-    - name: Save cluster ID
-      ansible.builtin.copy:
-        content: "{{ kafka_uuid.stdout }}"
-        dest: "{{ kafka_cluster_id }}"
-        mode: "0400"
-      changed_when: false
-
-    - name: Read existing cluster ID
-      ansible.builtin.command: "cat {{ kafka_cluster_id }}"
-      register: kafka_uuid
-      changed_when: false
-
-    # - name: Configure Kafka brokers
-    #   ansible.builtin.command: >
-    #     {{ kafka_bin }}/kafka-storage.sh format
-    #     -t {{ kafka_uuid.stdout }}
-    #     -c {{ kafka_config_dest }}
-    #   changed_when: true
-      # args:
-      #   creates: "{{ kafka_data }}/meta.properties"
+    - name: Configure Kafka brokers
+      ansible.builtin.shell: >
+        {{ kafka_bin }}/kafka-storage.sh format
+        --cluster-id {{ kafka_cluster_uuid }}
+        --config {{ kafka_config_dest }}
+        --initial-controllers "
+          0@192.168.56.11:9093:{{ kafka_controller_uuid_0 }},
+          1@192.168.56.12:9093:{{ kafka_controller_uuid_1 }},
+          2@192.168.56.13:9093:{{ kafka_controller_uuid_2 }}"
+      args:
+        creates: "{{ kafka_data }}/meta.properties"

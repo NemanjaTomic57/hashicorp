@@ -92,7 +92,7 @@
 
     - name: Configure Kafka brokers
       ansible.builtin.command: >
-        {{ kafka_bin}}/kafka-storage.sh format 
+        {{ kafka_bin }}/kafka-storage.sh format 
         -t {{ kafka_uuid.stdout }} 
         -c {{ kafka_config }}/kafka{{ item }}.properties
       args:

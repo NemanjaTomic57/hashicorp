@@ -1,19 +1,25 @@
 ---
 kafka_nodes:
+
   hosts:
+
     node-1:
       ansible_host: 192.168.56.11
       ansible_ssh_private_key_file: ./.vagrant/machines/node-1/virtualbox/private_key
-      kafka_config: ./kafka/config/kafka1.properties
+      kafka_config: ./kafka/config/server1.properties
+
     node-2:
       ansible_host: 192.168.56.12
       ansible_ssh_private_key_file: ./.vagrant/machines/node-2/virtualbox/private_key
-      kafka_config: ./kafka/config/kafka2.properties
+      kafka_config: ./kafka/config/server2.properties
+
     node-3:
       ansible_host: 192.168.56.13
       ansible_ssh_private_key_file: ./.vagrant/machines/node-3/virtualbox/private_key
-      kafka_config: ./kafka/config/kafka3.properties
+      kafka_config: ./kafka/config/server3.properties
+
   vars:
+
     ansible_user: vagrant
     ansible_ssh_extra_args: '-o StrictHostKeyChecking=off'
 
@@ -26,5 +32,11 @@ kafka_nodes:
     kafka_bin: "{{ kafka_install_dir }}/bin"
 
     kafka_config_dest: "{{ kafka }}/kafka.properties"
-    kafka_cluster_id: "{{ kafka }}/cluster.id"
+    kafka_cluster_uuid_file: "{{ kafka }}/cluster.id"
+    kafka_controller_uuid_file: "{{ kafka }}/controller.id"
     kafka_data: "{{ kafka }}/data"
+
+    kafka_cluster_uuid: B8gQk1EoRiiL_VccQC6Z0Q
+    kafka_controller_uuid_0: aKeYFeABSgicGjJpscKpkw
+    kafka_controller_uuid_1: N3f3vgHSTjGT8YlgjqWGGA
+    kafka_controller_uuid_2: WTpjxyOWSmeHiVgDVR2MKQ
