@@ -31,12 +31,13 @@ kafka_nodes:
     kafka_install_dir: "{{ kafka }}/kafka_2.13-4.2.0"
     kafka_bin: "{{ kafka_install_dir }}/bin"
 
-    kafka_config_dest: "{{ kafka }}/kafka.properties"
+    kafka_config_dest: "{{ kafka }}/config.properties"
     kafka_cluster_uuid_file: "{{ kafka }}/cluster.id"
     kafka_controller_uuid_file: "{{ kafka }}/controller.id"
     kafka_data: "{{ kafka }}/data"
 
     kafka_cluster_uuid: B8gQk1EoRiiL_VccQC6Z0Q
+
     kafka_controller_uuid_0: aKeYFeABSgicGjJpscKpkw
     kafka_controller_uuid_1: N3f3vgHSTjGT8YlgjqWGGA
     kafka_controller_uuid_2: WTpjxyOWSmeHiVgDVR2MKQ

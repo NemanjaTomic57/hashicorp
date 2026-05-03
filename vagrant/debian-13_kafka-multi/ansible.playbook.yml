@@ -4,6 +4,11 @@
 
   tasks:
 
+    - name: Remove kafka.properties
+      ansible.builtin.file:
+        path: "{{ kafka }}/kafka.properties"
+        state: absent
+
     - name: Install apt dependencies
       become: true
       ansible.builtin.apt:
@@ -64,14 +69,22 @@
         state: directory
         mode: "0700"
 
-    - name: Configure Kafka brokers
+    - name: Configure first Kafka node
+      ansible.builtin.shell: >
+        {{ kafka_bin }}/kafka-storage.sh format
+        --cluster-id {{ kafka_cluster_uuid }}
+        --standalone
+        --config {{ kafka_config_dest }}
+      when: inventory_hostname == groups['kafka_nodes'][0]
+      args:
+        creates: "{{ kafka_data }}/meta.properties"
+
+    - name: Configure other two Kafka nodes
       ansible.builtin.shell: >
         {{ kafka_bin }}/kafka-storage.sh format
         --cluster-id {{ kafka_cluster_uuid }}
         --config {{ kafka_config_dest }}
-        --initial-controllers "
-          0@192.168.56.11:9093:{{ kafka_controller_uuid_0 }},
-          1@192.168.56.12:9093:{{ kafka_controller_uuid_1 }},
-          2@192.168.56.13:9093:{{ kafka_controller_uuid_2 }}"
+        --no-initial-controllers
+      when: inventory_hostname != groups['kafka_nodes'][0]
       args:
         creates: "{{ kafka_data }}/meta.properties"
