@@ -37,7 +37,3 @@ kafka_nodes:
     kafka_data: "{{ kafka }}/data"
 
     kafka_cluster_uuid: B8gQk1EoRiiL_VccQC6Z0Q
-
-    kafka_controller_uuid_0: aKeYFeABSgicGjJpscKpkw
-    kafka_controller_uuid_1: N3f3vgHSTjGT8YlgjqWGGA
-    kafka_controller_uuid_2: WTpjxyOWSmeHiVgDVR2MKQ
