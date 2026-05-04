@@ -58,17 +58,6 @@
 
   tasks:
 
-    - name: Clear data directory
-      ansible.builtin.file:
-        path: "{{ kafka_data }}"
-        state: absent
-
-    - name: Create data directory
-      ansible.builtin.file:
-        path: "{{ kafka_data }}"
-        state: directory
-        mode: "0700"
-
     - name: Configure first Kafka node
       ansible.builtin.shell: >
         {{ kafka_bin }}/kafka-storage.sh format
