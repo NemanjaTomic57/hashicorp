@@ -47,6 +47,17 @@
           - docker-buildx-plugin
           - docker-compose-plugin
 
+    - name: Create docker group
+      ansible.builtin.group:
+        name: docker
+        state: present
+
+    - name: Add docker group to user
+      ansible.builtin.user:
+        name: vagrant
+        groups: docker
+        append: true
+
     - name: Ensure docker.service is running
       ansible.builtin.service:
         name: docker
@@ -59,6 +70,6 @@
   tasks:
 
     - name: Install kind with go
-      ansible.builtin.shell: /usr/local/go/bin/go install sigs.k8s.io/kind@v0.31.0
+      ansible.builtin.command: /usr/local/go/bin/go install sigs.k8s.io/kind@v0.31.0
       args:
         creates: /home/vagrant/go/bin/kind
