@@ -1,18 +1,4 @@
 ---
-- name: Install gnome desktop environment
-  hosts: all
-  become: true
-
-  tasks:
-    - name: Install apt packages
-      ansible.builtin.apt:
-        name:
-          - gnome
-          - gdm3
-        update_cache: true
-        cache_valid_time: 3600
-
-
 - name: Install Docker
   hosts: all
   become: true
