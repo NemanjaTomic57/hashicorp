@@ -1,0 +1,10 @@
+---
+- name: Configure load balancer
+  hosts: controlplanes
+  become: true
+
+  tasks:
+    - name: Install apt dependencies
+      ansible.builtin.apt:
+        name:
+          - keepalived

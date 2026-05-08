@@ -1,0 +1,17 @@
+[controlplanes]
+192.168.56.21 ansible_ssh_private_key_file=./.vagrant/machines/node-1/virtualbox/private_key
+192.168.56.22 ansible_ssh_private_key_file=./.vagrant/machines/node-2/virtualbox/private_key
+192.168.56.23 ansible_ssh_private_key_file=./.vagrant/machines/node-3/virtualbox/private_key
+
+[workers]
+192.168.56.24 ansible_ssh_private_key_file=./.vagrant/machines/node-4/virtualbox/private_key
+192.168.56.25 ansible_ssh_private_key_file=./.vagrant/machines/node-5/virtualbox/private_key
+192.168.56.26 ansible_ssh_private_key_file=./.vagrant/machines/node-6/virtualbox/private_key
+
+[nodes:children]
+controlplanes
+workers
+
+[nodes:vars]
+ansible_user=vagrant
+ansible_ssh_extra_args='-o StrictHostKeyChecking=off'
