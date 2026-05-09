@@ -1,32 +1,31 @@
 ---
-- name: Update and upgrade all packages
-  hosts: all
-  become: true
-
-  tasks:
-
-    - name: Update apt cache
-      apt:
-        update_cache: yes
-        cache_valid_time: 3600
-
 - name: Install and configure Neovim
   hosts: all
-
   vars:
     nvim_archive: nvim-linux-x86_64.tar.gz
     nvim_url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
     nvim_install_dir: /opt/nvim-linux-x86_64
     nvim_config_src: /home/nemo/.config/nvim/
-  
-  tasks:
+    go_version: 1.26.2
 
+  tasks:
     - name: Install apt dependencies
       become: true
       ansible.builtin.apt:
         name:
           - git
           - luarocks
+          - python3-pip
+          - npm
+          - ruby-full
+          - php
+          - composer
+          - default-jdk
+          - ripgrep
+          - fd-find
+          - tree-sitter-cli
+        update_cache: true
+        cache_valid_time: 3600
 
     - name: Check if nvim is already installed
       ansible.builtin.stat:
@@ -34,8 +33,8 @@
       register: nvim_installed
 
     - name: Install Neovim
+      when: not nvim_installed.stat.exists
       block:
-
         - name: Download Neovim archive
           ansible.builtin.get_url:
             url: "{{ nvim_url }}"
@@ -52,9 +51,7 @@
           ansible.builtin.unarchive:
             src: "/tmp/{{ nvim_archive }}"
             dest: /opt
-            remote_src: yes
-
-      when: not nvim_installed.stat.exists
+            remote_src: true
 
     - name: Add Neovim to global PATH
       become: true
@@ -64,62 +61,50 @@
         mode: '0755'
 
     - name: Copy configurations
-      copy:
+      ansible.builtin.copy:
         src: "{{ nvim_config_src }}"
         dest: /home/vagrant/.config/nvim/
-
-- name: Install Neovim dependencies
-  hosts: all
-
-  vars:
-    go_version: 1.26.2
-
-  tasks:
-
-    - name: Install apt dependencies
-      become: true
-      apt:
-        name:
-          - python3-pip
-          - npm
-          - ruby-full
-          - php
-          - composer
-          - default-jdk
-          - ripgrep
-          - fd-find
+        mode: "0666"
 
     - name: Install Rust (rustup)
-      shell: curl https://sh.rustup.rs -sSf | sh -s -- -y
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
       args:
         creates: /home/vagrant/.cargo/bin/cargo
 
     - name: Add cargo to global PATH
       become: true
-      copy:
+      ansible.builtin.copy:
         dest: /etc/profile.d/rust.sh
         content: 'export PATH="/home/vagrant/.cargo/bin:$PATH"'
+        mode: "0755"
 
     - name: Download Go
-      get_url:
+      ansible.builtin.get_url:
         url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
         dest: /tmp/go.tar.gz
+        mode: "0500"
 
     - name: Extract Go
       become: true
-      unarchive:
+      ansible.builtin.unarchive:
         src: /tmp/go.tar.gz
         dest: /usr/local
-        remote_src: yes
+        remote_src: true
 
     - name: Add Go to PATH
       become: true
-      copy:
+      ansible.builtin.copy:
         dest: /etc/profile.d/go.sh
         content: |
           export PATH=$PATH:/usr/local/go/bin
+          export PATH=$PATH:/home/vagrant/go/bin
+        mode: "0555"
 
     - name: Install Julia
-      shell: curl -fsSL https://install.julialang.org | sh -s -- -y
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl -fsSL https://install.julialang.org | sh -s -- -y
       args:
         creates: /home/vagrant/.juliaup/bin/julia

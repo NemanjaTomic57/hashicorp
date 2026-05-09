@@ -3,7 +3,6 @@
   hosts: all
 
   tasks:
-
     - name: Remove kafka.properties
       ansible.builtin.file:
         path: "{{ kafka }}/kafka.properties"
@@ -53,18 +52,18 @@
         content: 'export PATH={{ kafka_bin }}:"$PATH"'
         mode: "0444"
 
-- name: Configure Kafka
+
+- name: Configure Kafka nodes
   hosts: all
 
   tasks:
-
     - name: Configure first Kafka node
       ansible.builtin.shell: >
         {{ kafka_bin }}/kafka-storage.sh format
         --cluster-id {{ kafka_cluster_uuid }}
         --standalone
         --config {{ kafka_config_dest }}
-      when: inventory_hostname == groups['kafka_nodes'][0]
+      when: inventory_hostname == "node-1"
       args:
         creates: "{{ kafka_data }}/meta.properties"
 
@@ -74,6 +73,27 @@
         --cluster-id {{ kafka_cluster_uuid }}
         --config {{ kafka_config_dest }}
         --no-initial-controllers
-      when: inventory_hostname != groups['kafka_nodes'][0]
+      when: inventory_hostname != "node-1"
       args:
         creates: "{{ kafka_data }}/meta.properties"
+
+    - name: Start the Kafka servers
+      ansible.builtin.shell: >
+        {{ kafka_bin }}/kafka-server-start.sh -daemon {{ kafka_config_dest }}
+      changed_when: false
+
+    - name: Wait for Kafka controller listener to be ready
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 9093
+        delay: 5
+        timeout: 60
+
+    - name: Register node-2 and node-3 as controllers
+      ansible.builtin.shell: >
+        {{ kafka_bin }}/kafka-metadata-quorum.sh
+        --command-config {{ kafka_config_dest }}
+        --bootstrap-controller {{ hostvars['node-1']['ansible_host'] }}:9093
+        add-controller
+      when: inventory_hostname != "node-1"
+      changed_when: false
