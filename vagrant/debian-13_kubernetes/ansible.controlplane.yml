@@ -1,10 +1,92 @@
 ---
-- name: Configure load balancer
+- name: Configure Keepalived and HAProxy
   hosts: controlplanes
   become: true
 
+  vars:
+
+    # /etc/keepalived/keepalived.conf
+    interface: enp0s8
+    router_id: 51
+    auth_pass: 42
+    apiserver_vip: "192.168.56.20"
+    apiserver_dest_port: 6221
+    apiserver_src_port: 6443
+
   tasks:
-    - name: Install apt dependencies
+    - name: Download apt dependencies
       ansible.builtin.apt:
         name:
           - keepalived
+        update_cache: true
+        cache_valid_time: 3600
+
+    #################################################################
+    # KEEPALIVED
+    #################################################################
+    - name: Set keepalived state and priority
+      ansible.builtin.set_fact:
+        keepalived_state: >-
+          {{ 'MASTER' if inventory_hostname == 'controlplane1' else 'BACKUP' }}
+        keepalived_priority: >-
+          {{ '101' if inventory_hostname == 'controlplane1' else '100' }}
+
+    - name: Deploy Keepalived configuration
+      ansible.builtin.template:
+        src: keepalived.conf.j2
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Create Keepalived healthcheck
+      ansible.builtin.template:
+        src: check_apiserver.sh
+        dest: /etc/keepalived/check_apiserver.sh
+        mode: "0744"
+
+    - name: Restart Keepalived
+      ansible.builtin.systemd:
+        name: keepalived
+        state: restarted
+        enabled: true
+
+    #################################################################
+    # HAPROXY
+    #################################################################
+    - name: Ensure keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download HAProxy repository GPG key
+      ansible.builtin.get_url:
+        url: https://haproxy.debian.net/haproxy-archive-keyring.gpg
+        dest: /etc/apt/keyrings/haproxy-archive-keyring.gpg
+        mode: '0644'
+
+    - name: Add HAProxy repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/haproxy.list
+        content: |
+          deb [signed-by=/etc/apt/keyrings/haproxy-archive-keyring.gpg] https://haproxy.debian.net trixie-backports-3.2 main
+        mode: '0644'
+
+    - name: Install HAProxy 3.2
+      ansible.builtin.apt:
+        name: "haproxy=3.2.*"
+        state: present
+        update_cache: true
+
+    - name: Configure HAProxy
+      ansible.builtin.template:
+        src: haproxy.cfg
+        dest: /etc/haproxy/haproxy.cfg
+        mode: "0644"
+
+    - name: Restart Keepalived
+      ansible.builtin.systemd:
+        name: haproxy
+        state: restarted
+        enabled: true

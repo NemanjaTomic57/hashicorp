@@ -148,6 +148,7 @@
           - ca-certificates
           - curl
           - gpg
+          - htop
         state: present
 
     - name: Download Kubernetes GPG key
@@ -202,3 +203,17 @@
           alias kgs='kubectl get svc'
           alias kga='kubectl get all'
           alias kdp='kubectl describe pod'
+
+    - name: Ensure kubelet uses the correct node IP
+      ansible.builtin.lineinfile:
+        path: /var/lib/kubelet/kubeadm-flags.env
+        regexp: '^KUBELET_KUBEADM_ARGS='
+        line: 'KUBELET_KUBEADM_ARGS="--node-ip={{ ansible_host }}"'
+        create: true
+        mode: "0644"
+
+    - name: Restart kubelet
+      ansible.builtin.systemd:
+        name: kubelet
+        state: restarted
+        daemon_reload: true
