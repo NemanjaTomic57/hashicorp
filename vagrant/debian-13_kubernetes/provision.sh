@@ -2,5 +2,7 @@
 
 set -e
 
-ansible-playbook ./ansible.playbook.yml -i ./hosts
-ansible-playbook ./ansible.controlplane.yml -i ./hosts
+cd ansible
+
+ansible-playbook kubeadm-install.yml -i hosts
+ansible-playbook controlplanes-config.yml -i hosts

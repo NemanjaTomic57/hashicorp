@@ -1,17 +1,18 @@
 ---
 - name: Configure Keepalived and HAProxy
-  hosts: controlplanes
+  hosts: all
   become: true
 
   vars:
-
-    # /etc/keepalived/keepalived.conf
     interface: enp0s8
     router_id: 51
     auth_pass: 42
-    apiserver_vip: "192.168.56.20"
+    apiserver_vip: "192.168.60.10"
     apiserver_dest_port: 6221
     apiserver_src_port: 6443
+    apiserver1_ip: "192.168.60.11"
+    apiserver2_ip: "192.168.60.12"
+    apiserver3_ip: "192.168.60.13"
 
   tasks:
     - name: Download apt dependencies
@@ -85,7 +86,7 @@
         dest: /etc/haproxy/haproxy.cfg
         mode: "0644"
 
-    - name: Restart Keepalived
+    - name: Restart HAProxy
       ansible.builtin.systemd:
         name: haproxy
         state: restarted

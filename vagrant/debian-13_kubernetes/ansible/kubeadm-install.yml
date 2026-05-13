@@ -203,6 +203,8 @@
           alias kgs='kubectl get svc'
           alias kga='kubectl get all'
           alias kdp='kubectl describe pod'
+          source <(kubectl completion bash)
+          complete -o default -F __start_kubectl k
 
     - name: Ensure kubelet uses the correct node IP
       ansible.builtin.lineinfile:
