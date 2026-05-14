@@ -1,0 +1,13 @@
+{
+  "name": "customers-source",
+  "config": {
+    "connector.class": "io.streamthoughts.kafka.connect.filepulse.source.FilePulseSourceConnector",
+    "tasks.max": "1",
+    "topic": "customers",
+    "fs.listing.class": "io.streamthoughts.kafka.connect.filepulse.fs.LocalFSDirectoryListing",
+    "fs.listing.directory.path": "/tmp/customers",
+    "tasks.reader.class": "io.streamthoughts.kafka.connect.filepulse.fs.reader.LocalRowFileInputReader",
+    "fs.cleanup.policy.class": "io.streamthoughts.kafka.connect.filepulse.fs.clean.LogCleanupPolicy",
+    "tasks.file.status.storage.bootstrap.servers": "localhost:9092"
+  }
+}

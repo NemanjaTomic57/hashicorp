@@ -3,16 +3,14 @@
   hosts: all
 
   tasks:
-    - name: Remove kafka.properties
-      ansible.builtin.file:
-        path: "{{ kafka }}/kafka.properties"
-        state: absent
-
     - name: Install apt dependencies
       become: true
       ansible.builtin.apt:
         name:
           - default-jdk
+          - rsync
+        update_cache: true
+        cache_valid_time: 3600
 
     - name: Create ~/kafka folder
       ansible.builtin.file:
@@ -54,6 +52,7 @@
 
 
 - name: Configure Kafka nodes
+  gather_facts: false
   hosts: all
 
   tasks:
@@ -87,13 +86,13 @@
         host: "{{ ansible_host }}"
         port: 9093
         delay: 5
-        timeout: 60
+        timeout: 10
 
     - name: Get quorum status
       ansible.builtin.shell: |
         set -o pipefail
         {{ kafka_bin }}/kafka-metadata-quorum.sh \
-        --bootstrap-server localhost:9092 \
+        --bootstrap-server {{ hostvars['node-1']['ansible_host'] }}:9092 \
         describe --status | grep "CurrentVoters" \
       changed_when: false
       register: quorum_status
