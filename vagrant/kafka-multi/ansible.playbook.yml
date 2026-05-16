@@ -18,12 +18,6 @@
         state: directory
         mode: "0700"
 
-    - name: Copy broker configuration file
-      ansible.builtin.copy:
-        src: "{{ kafka_config }}"
-        dest: "{{ kafka_config_dest }}"
-        mode: "0400"
-
     - name: Check if Kafka is already installed
       ansible.builtin.stat:
         path: "{{ kafka_install_dir }}"
@@ -56,6 +50,12 @@
   hosts: all
 
   tasks:
+    - name: Copy broker configuration file
+      ansible.builtin.copy:
+        src: "{{ kafka_config }}"
+        dest: "{{ kafka_config_dest }}"
+        mode: "0400"
+
     - name: Configure first Kafka node
       ansible.builtin.shell: >
         {{ kafka_bin }}/kafka-storage.sh format
