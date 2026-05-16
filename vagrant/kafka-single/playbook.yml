@@ -30,23 +30,6 @@
         state: directory
         mode: "0755"
 
-    - name: Copy configuration folder
-      ansible.builtin.copy:
-        src: /vagrant/kafka/config/
-        dest: "{{ kafka_config }}"
-        remote_src: true
-        mode: "0755"
-
-    - name: Create data folders
-      ansible.builtin.file:
-        path: "{{ kafka_data }}/{{ item }}"
-        state: directory
-        mode: "0755"
-      loop:
-        - kafka1
-        - kafka2
-        - kafka3
-
     - name: Check if Kafka is already installed
       ansible.builtin.stat:
         path: "{{ kafka_install_dir }}"
@@ -73,6 +56,23 @@
         dest: /etc/profile.d/kafka.sh
         content: 'export PATH={{ kafka_bin }}:"$PATH"'
         mode: "0755"
+
+    - name: Copy configuration folder
+      ansible.builtin.copy:
+        src: /vagrant/kafka/config/
+        dest: "{{ kafka_config }}"
+        remote_src: true
+        mode: "0755"
+
+    - name: Create data folders
+      ansible.builtin.file:
+        path: "{{ kafka_data }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - kafka1
+        - kafka2
+        - kafka3
 
     - name: Check if cluster ID exists
       ansible.builtin.stat:
