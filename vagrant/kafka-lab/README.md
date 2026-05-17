@@ -12,7 +12,7 @@ Principles like high availability are not part of the requirements, as speed and
 
 ## Requirements
 
-We will create a Kafka cluster in the cloud with the following requirements:
+We will create a Kafka cluster in a virtual machine with the following requirements:
 
 - Create Kafka topics in Go
 - Fetch data from GitHub and GitLab APIs with cron jobs
