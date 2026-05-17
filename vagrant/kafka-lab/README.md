@@ -20,4 +20,6 @@ We will create a Kafka cluster in a virtual machine with the following requireme
 - Use Kafka Connect to sink the data to S3
 - Create a dashboard in Grafana to display metrics
 
-We plan to create a development environment using Docker Compose. Later, we'll set up a production environment on Hetzner Cloud. Provisioning will take place with Terraform and Ansible.
+We plan to create a development environment using Docker Compose. Later, we'll set up a production environment on Hetzner Cloud with Docker for the runtime environment. 
+
+Provisioning will take place with Terraform and Ansible.
