@@ -6,7 +6,7 @@ The project is a pilot project focused on proof of concept.
 
 The goal of the project is to get a thorough understanding of the Kafka ecosystem, specifically how it works together with external data sources and destinations. The main focus is to grasp the underlying technology in its fullest by implementing a real-world use case. The leading question is the following:
 
-How are scalable solutions for data streaming implemented in Kafka end to end?
+**How are scalable solutions for data streaming implemented in Kafka end to end?**
 
 Principles like high availability are not part of the requirements, as speed and flexibility are of greater importance.
 
