@@ -29,9 +29,9 @@ type GitlabProject struct {
 	Namespace         Namespace `json:"namespace"`
 }
 
-func main() {
-	var gp []GitlabProject
+var gp []GitlabProject
 
+func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatalln("Error loading .env file")
