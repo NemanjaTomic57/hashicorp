@@ -9,21 +9,7 @@ Vagrant.configure("2") do |config|
     v.cpus = 2
   end
 
-  (1..3).each do |i|
-    config.vm.define("controlplane#{i}") do |node|
-      node.vm.hostname = "controlplane#{i}"
-
-      ipAddr = "192.168.60.#{10 + i}"
-      node.vm.network("private_network", ip: ipAddr, netmask: "255.255.252.0")
-    end
-  end
-
-  (1..3).each do |i|
-    config.vm.define("worker#{i}") do |node|
-      node.vm.hostname = "worker#{i}"
-
-      ipAddr = "192.168.60.#{110 + i}"
-      node.vm.network("private_network", ip: ipAddr, netmask: "255.255.252.0")
-    end
+  config.vm.provision("ansible") do |ansible|
+    ansible.playbook = "playbook.yml"
   end
 end
