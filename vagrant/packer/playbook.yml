@@ -53,3 +53,14 @@
         name: docker
         state: started
         enabled: true
+
+
+- name: Config
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install apt dependencies
+      ansible.builtin.apt:
+        name:
+          - vim

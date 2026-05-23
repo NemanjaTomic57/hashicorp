@@ -1,0 +1,420 @@
+---
+- name: Install and configure Neovim
+  hosts: all
+  vars:
+    nvim_archive: nvim-linux-x86_64.tar.gz
+    nvim_url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+    nvim_install_dir: /opt/nvim-linux-x86_64
+    nvim_config_src: /home/nemo/.config/nvim/
+    go_version: 1.26.3
+    go_checksum: 2b2cfc7148493da5e73981bffbf3353af381d5f93e789c82c79aff64962eb556
+
+  tasks:
+    - name: Install apt dependencies
+      become: true
+      ansible.builtin.apt:
+        name:
+          - rsync
+          - git
+          - luarocks
+          - python3-pip
+          - npm
+          - ruby-full
+          - php
+          - composer
+          - default-jdk
+          - ripgrep
+          - fd-find
+          - tree-sitter-cli
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Check if nvim is already installed
+      ansible.builtin.stat:
+        path: "{{ nvim_install_dir }}/bin/nvim"
+      register: nvim_installed
+
+    - name: Install Neovim
+      when: not nvim_installed.stat.exists
+      block:
+        - name: Download Neovim archive
+          ansible.builtin.get_url:
+            url: "{{ nvim_url }}"
+            dest: "/tmp/{{ nvim_archive }}"
+            mode: '0644'
+
+        - name: Remove existing Neovim directory
+          ansible.builtin.file:
+            path: "{{ nvim_install_dir }}"
+            state: absent
+
+        - name: Extract Neovim archive
+          become: true
+          ansible.builtin.unarchive:
+            src: "/tmp/{{ nvim_archive }}"
+            dest: /opt
+            remote_src: true
+
+    - name: Add Neovim to global PATH
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/profile.d/nvim.sh
+        content: 'export PATH="/opt/nvim-linux-x86_64/bin:$PATH"'
+        mode: '0755'
+
+    - name: Ensure Neovim config parent directory exists
+      ansible.builtin.file:
+        path: /home/vagrant/.config
+        state: directory
+        mode: '0755'
+
+    - name: Sync Neovim configuration
+      ansible.posix.synchronize:
+        src: "{{ nvim_config_src }}/"
+        dest: /home/vagrant/.config/nvim/
+        delete: true
+
+    - name: Install Rust (rustup)
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+      args:
+        creates: /home/vagrant/.cargo/bin/cargo
+
+    - name: Add cargo to global PATH
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/profile.d/rust.sh
+        content: 'export PATH="/home/vagrant/.cargo/bin:$PATH"'
+        mode: "0755"
+
+    - name: Download Go
+      ansible.builtin.get_url:
+        url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+        dest: /tmp/go.tar.gz
+        mode: "0644"
+        checksum: "sha256:{{ go_checksum }}"
+
+    - name: Extract Go
+      become: true
+      ansible.builtin.unarchive:
+        src: /tmp/go.tar.gz
+        dest: /usr/local
+        remote_src: true
+      args:
+        creates: /usr/local/go
+
+    - name: Add Go to PATH
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/profile.d/go.sh
+        content: |
+          export PATH=$PATH:/usr/local/go/bin
+          export PATH=$PATH:/home/vagrant/go/bin
+        mode: "0555"
+
+    - name: Install Julia
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl -fsSL https://install.julialang.org | sh -s -- -y
+      args:
+        creates: /home/vagrant/.juliaup/bin/julia
+
+
+- name: Install AWS Ecosystem Tooling
+  hosts: all
+
+  vars:
+    aws_cli_zip: "awscliv2.zip"
+    aws_cli_url: "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+
+    sam_cli_url: "https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip"
+
+    session_manager_plugin_url: >
+      https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb
+
+    terraform_repo: "https://apt.releases.hashicorp.com"
+    kubectl_version_url: "https://dl.k8s.io/release/stable.txt"
+
+  tasks:
+
+    #####################################################################
+    # BASE PACKAGES
+    #####################################################################
+
+    - name: Update apt cache
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install required base packages
+      become: true
+      ansible.builtin.apt:
+        name:
+          - gpg
+          - npm
+          - openjdk-25-jdk
+        state: present
+
+    #####################################################################
+    # AWS CLI v2
+    #####################################################################
+
+    - name: Download AWS CLI v2
+      ansible.builtin.get_url:
+        url: "{{ aws_cli_url }}"
+        dest: "/tmp/{{ aws_cli_zip }}"
+        mode: '0644'
+
+    - name: Unarchive AWS CLI
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ aws_cli_zip }}"
+        dest: /tmp
+        remote_src: true
+
+    - name: Install AWS CLI v2
+      become: true
+      ansible.builtin.command:
+        cmd: /tmp/aws/install --update
+      changed_when: true
+
+    #####################################################################
+    # AWS SAM CLI
+    #####################################################################
+
+    - name: Create SAM installation directory
+      ansible.builtin.file:
+        path: /tmp/sam-installation
+        state: directory
+        mode: '0755'
+
+    - name: Download AWS SAM CLI
+      ansible.builtin.get_url:
+        url: "{{ sam_cli_url }}"
+        dest: /tmp/aws-sam-cli-linux-x86_64.zip
+        mode: '0644'
+
+    - name: Extract AWS SAM CLI
+      ansible.builtin.unarchive:
+        src: /tmp/aws-sam-cli-linux-x86_64.zip
+        dest: /tmp/sam-installation
+        remote_src: true
+
+    - name: Install AWS SAM CLI
+      become: true
+      ansible.builtin.command:
+        cmd: /tmp/sam-installation/install --update
+      changed_when: true
+
+    #####################################################################
+    # AWS CDK
+    #####################################################################
+
+    - name: Install latest AWS CDK
+      become: true
+      community.general.npm:
+        name: aws-cdk
+        global: true
+        state: latest
+
+    #####################################################################
+    # Session Manager Plugin
+    #####################################################################
+
+    - name: Download Session Manager Plugin
+      ansible.builtin.get_url:
+        url: "{{ session_manager_plugin_url }}"
+        dest: /tmp/session-manager-plugin.deb
+        mode: '0644'
+
+    - name: Install Session Manager Plugin
+      become: true
+      ansible.builtin.apt:
+        deb: /tmp/session-manager-plugin.deb
+
+    #####################################################################
+    # kubectl
+    #####################################################################
+
+    - name: Get latest kubectl version
+      ansible.builtin.uri:
+        url: "{{ kubectl_version_url }}"
+        return_content: true
+      register: kubectl_version
+
+    - name: Download kubectl
+      become: true
+      ansible.builtin.get_url:
+        url: "https://dl.k8s.io/release/{{ kubectl_version.content | trim }}/bin/linux/amd64/kubectl"
+        dest: /usr/local/bin/kubectl
+        mode: '0755'
+
+    #####################################################################
+    # eksctl
+    #####################################################################
+
+    - name: Get latest eksctl release info
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/weaveworks/eksctl/releases/latest
+        return_content: true
+      register: eksctl_release
+
+    - name: Set eksctl version
+      ansible.builtin.set_fact:
+        eksctl_version: "{{ eksctl_release.json.tag_name }}"
+
+    - name: Download eksctl
+      ansible.builtin.get_url:
+        url: "https://github.com/weaveworks/eksctl/releases/download/{{ eksctl_version }}/eksctl_Linux_amd64.tar.gz"
+        dest: /tmp/eksctl.tar.gz
+        mode: '0644'
+
+    - name: Extract eksctl
+      ansible.builtin.unarchive:
+        src: /tmp/eksctl.tar.gz
+        dest: /tmp
+        remote_src: true
+
+    - name: Install eksctl
+      become: true
+      ansible.builtin.copy:
+        src: /tmp/eksctl
+        dest: /usr/local/bin/eksctl
+        mode: '0755'
+        remote_src: true
+
+    #####################################################################
+    # HELM
+    #####################################################################
+
+    - name: Download Helm install script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get_helm.sh
+        mode: '0755'
+
+    - name: Install Helm
+      ansible.builtin.command:
+        cmd: /tmp/get_helm.sh
+      changed_when: true
+
+    #####################################################################
+    # HASHICORP REPOSITORY
+    #####################################################################
+
+    - name: Add HashiCorp GPG key
+      become: true
+      ansible.builtin.shell: |
+        set -o pipefail
+        curl -fsSL https://apt.releases.hashicorp.com/gpg | \
+        gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+      args:
+        creates: /usr/share/keyrings/hashicorp-archive-keyring.gpg
+
+    - name: Add HashiCorp repository
+      become: true
+      ansible.builtin.apt_repository:
+        repo: >
+          deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg]
+          https://apt.releases.hashicorp.com
+          {{ ansible_facts['distribution_release'] }} main
+        filename: hashicorp
+        state: present
+
+    - name: Update apt cache after adding HashiCorp repo
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+
+    #####################################################################
+    # TERRAFORM & PACKER
+    #####################################################################
+
+    - name: Install Terraform and Packer
+      become: true
+      ansible.builtin.apt:
+        name:
+          - terraform
+          - packer
+
+    #####################################################################
+    # DOCKER SERVICE
+    #####################################################################
+
+    - name: Install Docker
+      become: true
+
+      block:
+
+        - name: Create keyrings directory
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: "0755"
+
+        - name: Download Docker GPG key
+          ansible.builtin.get_url:
+            url: https://download.docker.com/linux/debian/gpg
+            dest: /etc/apt/keyrings/docker.asc
+            mode: "0644"
+
+        - name: Add Docker repository
+          ansible.builtin.shell: |
+            echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] \
+            https://download.docker.com/linux/debian \
+            $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+            > /etc/apt/sources.list.d/docker.list
+          args:
+            creates: /etc/apt/sources.list.d/docker.list
+
+        - name: Install Docker packages
+          ansible.builtin.apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-compose-plugin
+            state: present
+            update_cache: true
+
+        - name: Create docker group
+          ansible.builtin.group:
+            name: docker
+            state: present
+
+        - name: Add docker group to user
+          ansible.builtin.user:
+            name: vagrant
+            groups: docker
+            append: true
+
+        - name: Enable Docker
+          ansible.builtin.service:
+            name: docker
+            enabled: true
+            state: started
+
+    #####################################################################
+    # VERIFY INSTALLATIONS
+    #####################################################################
+
+    - name: Verify installed tools
+      ansible.builtin.shell: |
+        set -o pipefail
+        echo "AWS CLI: $(aws --version)"
+        echo "SAM CLI: $(sam --version)"
+        echo "CDK: $(cdk --version)"
+        echo "kubectl: $(kubectl version --client --output=yaml | head -n 5)"
+        echo "eksctl: $(eksctl version)"
+        echo "Terraform: $(terraform version | head -n 1)"
+        echo "Packer: $(packer version)"
+        echo "Helm: $(helm version --short)"
+      register: tool_versions
+      changed_when: false
+
+    - name: Show installed versions
+      ansible.builtin.debug:
+        var: tool_versions.stdout_lines

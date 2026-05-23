@@ -1,0 +1,10 @@
+#cloud-config
+autoinstall:
+  version: 1
+  identity:
+    hostname: ubuntu
+    username: nemo
+    password: '$6$mGJCeNOIS20IHTLf$7msu8XBX07wQSUOwbvv.H6GyvKLfDio3JVSNOQYjN93eHI82GB3L0azKOfr.DBI8W8PI8N2/NvP0.wcyNOIiy1'
+  ssh:
+    install-server: yes
+    allow-pw: yes
