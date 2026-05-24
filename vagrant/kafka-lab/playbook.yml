@@ -246,6 +246,8 @@
     kafka_bin: "{{ kafka_install_dir }}/bin"
 
     kafka_config: /vagrant/kafka/server.properties
+    connect_config: /vagrant/kafka/connect/connect-standalone.properties
+    connector_s3_config: /vagrant/kafka/connect/s3.properties
 
   tasks:
     - name: Check if cluster ID exists
@@ -281,7 +283,7 @@
       args:
         creates: "{{ kafka_logs }}/meta.properties"
 
-    - name: Create kafka systemd service
+    - name: Create Kafka systemd service
       become: true
       ansible.builtin.copy:
         dest: /etc/systemd/system/kafka.service
@@ -305,6 +307,30 @@
           [Install]
           WantedBy=multi-user.target
 
+    - name: Create Kafka Connect systemd service
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/kafka-connect.service
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Apache Kafka Connect
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=vagrant
+          Group=vagrant
+
+          ExecStart={{ kafka_bin }}/connect-standalone.sh {{ connect_config }} {{ connector_s3_config }}
+          ExecStop=/bin/kill $MAINPID
+
+          Restart=on-failure
+          RestartSec=10
+
+          [Install]
+          WantedBy=multi-user.target
+
     - name: Reload systemd
       become: true
       ansible.builtin.systemd:
@@ -314,6 +340,13 @@
       become: true
       ansible.builtin.systemd:
         name: kafka
+        enabled: true
+        state: started
+
+    - name: Enable and start Kafka Connect
+      become: true
+      ansible.builtin.systemd:
+        name: kafka-connect
         enabled: true
         state: started
 
