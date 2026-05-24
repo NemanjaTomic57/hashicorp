@@ -170,7 +170,7 @@ func main() {
 
 	baseURL := "https://gitlab.com/api/v4"
 	url := baseURL + "/projects?owned=true"
-	url = baseURL + "/projects/80655432/repository/commits?per_page=30"
+	url = baseURL + "/projects/80655432/repository/commits"
 	// topic := "git.projects"
 	topic := "git.commits"
 
