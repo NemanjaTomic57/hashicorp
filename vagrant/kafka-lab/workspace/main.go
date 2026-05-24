@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/joho/godotenv"
@@ -30,11 +32,29 @@ type GitlabProject struct {
 	GitlabProjectNamespace GitlabProjectNamespace `json:"namespace"`
 }
 
-type GitlabAPIResponse interface {
-	GitlabProject
+type GitlabCommit struct {
+	ID               string              `json:"id"`
+	ShortID          string              `json:"short_id"`
+	CreatedAt        time.Time           `json:"created_at"`
+	ParentIDs        []string            `json:"parent_ids"`
+	Title            string              `json:"title"`
+	Message          string              `json:"message"`
+	AuthorName       string              `json:"author_name"`
+	AuthorEmail      string              `json:"author_email"`
+	AuthoredDate     time.Time           `json:"authored_date"`
+	CommitterName    string              `json:"committer_name"`
+	CommitterEmail   string              `json:"committer_email"`
+	CommittedDate    time.Time           `json:"committed_date"`
+	Trailers         map[string]string   `json:"trailers"`
+	ExtendedTrailers map[string][]string `json:"extended_trailers"`
+	WebURL           string              `json:"web_url"`
 }
 
-func fetchGitlabAPI(url string) []byte {
+type GitlabAPIResponse interface {
+	GitlabProject | GitlabCommit
+}
+
+func fetchGitlabAPI(url string) *http.Response {
 	gitlabPAT := os.Getenv("GITLAB_PAT")
 	if gitlabPAT == "" {
 		log.Fatal("GITLAB_PAT is not set")
@@ -43,47 +63,72 @@ func fetchGitlabAPI(url string) []byte {
 	// Create the HTTP request
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		log.Fatal("Error creating request:", err)
+		log.Fatal("fetchGitlabAPI() -> error creating the request:", err)
 	}
 
 	req.Header.Add("PRIVATE-TOKEN", gitlabPAT)
 
-	// TODO: Handle pagination
 	// Send request
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Error performing request:", err)
+		log.Fatal("fetchGitlabAPI() -> error sending the request:", err)
 	}
-	defer resp.Body.Close()
 
+	return resp
+}
+
+func extractBodyFromResponse(resp *http.Response) []byte {
 	// Read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal("Error reading response body:", err)
+		log.Fatal("extractBodyFromResponse() -> error reading response body:", err)
 	}
 
 	// Check status code
 	if resp.StatusCode != http.StatusOK {
-		log.Fatalf("Request status code error: %s\n%s", resp.Status, string(body))
+		log.Fatalf("extractBodyFromResponse() -> request status code error: %s\n%s", resp.Status, string(body))
 	}
 
 	return body
 }
 
-func produceToKafka[T GitlabAPIResponse](resp []byte, topic string) {
+func getNextLink(resp *http.Response) string {
+	// Extract the next link from pagination
+	linkHeader := resp.Header.Get("Link")
+
+	if linkHeader == "" {
+		return ""
+	}
+
+	for link := range strings.SplitSeq(linkHeader, ",") {
+		parts := strings.Split(link, ";")
+
+		if len(parts) < 2 {
+			continue
+		}
+
+		urlPart := strings.TrimSpace(parts[0])
+		relPart := strings.TrimSpace(parts[1])
+
+		if relPart == `rel="next"` {
+			return strings.Trim(urlPart, "<>")
+		}
+	}
+
+	return ""
+}
+
+func produceToKafka[T GitlabAPIResponse](p *kafka.Producer, resp []byte, topic string) {
 	var object []T
 
 	err := json.Unmarshal(resp, &object)
 	if err != nil {
-		log.Fatal("Error unmarshalling JSON:", err)
+		log.Fatal("produceToKafka() -> error unmarshalling JSON:", err)
 	}
-
-	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
-	if err != nil {
-		log.Fatal("Error creating Kafka producer: ", err)
-	}
-	defer p.Close()
 
 	// Get results back from producing to Kafka and print to console
 	go func() {
@@ -91,9 +136,9 @@ func produceToKafka[T GitlabAPIResponse](resp []byte, topic string) {
 			switch ev := e.(type) {
 			case *kafka.Message:
 				if ev.TopicPartition.Error != nil {
-					fmt.Printf("Delivery failed %v\n", ev.TopicPartition)
+					fmt.Printf("produceToKafka() -> delivery failed %v\n", ev.TopicPartition)
 				} else {
-					fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
+					fmt.Printf("produceToKafka() -> delivered message to %v\n", ev.TopicPartition)
 				}
 			}
 		}
@@ -103,7 +148,7 @@ func produceToKafka[T GitlabAPIResponse](resp []byte, topic string) {
 	for _, project := range object {
 		projectBytes, err := json.Marshal(project)
 		if err != nil {
-			log.Println("Error marshalling project:", err)
+			log.Println("produceToKafka() -> error marshalling project:", err)
 			continue
 		}
 
@@ -111,26 +156,37 @@ func produceToKafka[T GitlabAPIResponse](resp []byte, topic string) {
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 			Value:          projectBytes,
 		}, nil)
-
 		if err != nil {
-			log.Println("Error producing message:", err)
+			log.Println("produceToKafka() -> error producing message:", err)
 		}
 	}
-
-	p.Flush(1000)
 }
 
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalln("Error loading .env file")
+		log.Fatalln("main() -> error loading .env file")
 	}
 
 	baseURL := "https://gitlab.com/api/v4"
 	url := baseURL + "/projects?owned=true"
-	resp := fetchGitlabAPI(url)
+	url = baseURL + "/projects/80655432/repository/commits?per_page=30"
+	// topic := "git.projects"
+	topic := "git.commits"
 
-	topic := "git.projects"
+	p, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
+	if err != nil {
+		log.Fatal("main() -> error creating Kafka producer: ", err)
+	}
+	defer p.Close()
 
-	produceToKafka(resp, topic)
+	for url != "" {
+		resp := fetchGitlabAPI(url)
+		url = getNextLink(resp)
+		body := extractBodyFromResponse(resp)
+		resp.Body.Close()
+		produceToKafka[GitlabCommit](p, body, topic)
+	}
+
+	p.Flush(15 * 1000)
 }
