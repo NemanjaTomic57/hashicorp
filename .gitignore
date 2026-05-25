@@ -1,4 +1,9 @@
-.vagrant/
+# Secret variables
 .env
+**/.aws/credentials
 
+# Vagrant files for managing VMs
+.vagrant/
+
+# Code examples
 bento/

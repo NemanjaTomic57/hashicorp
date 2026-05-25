@@ -283,6 +283,41 @@
       args:
         creates: "{{ kafka_logs }}/meta.properties"
 
+    - name: Ensure Kafka libs directory exists
+      ansible.builtin.file:
+        path: /home/vagrant/kafka/libs
+        state: directory
+        mode: '0755'
+
+    - name: Download Confluent S3 connector
+      ansible.builtin.get_url:
+        url: https://archives-761018874759.s3.eu-central-1.amazonaws.com/kafka/libs/confluentinc-kafka-connect-s3-12.1.5.zip
+        dest: /tmp/confluentinc-kafka-connect-s3-12.1.5.zip
+        mode: '0644'
+
+    - name: Unarchive Confluent S3 connector
+      ansible.builtin.unarchive:
+        src: /tmp/confluentinc-kafka-connect-s3-12.1.5.zip
+        dest: /home/vagrant/kafka/libs
+        remote_src: true
+        creates: /home/vagrant/kafka/libs/confluentinc-kafka-connect-s3-12.1.5
+
+    - name: Ensure .aws directory exists
+      ansible.builtin.file:
+        path: /home/vagrant/.aws
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: '0700'
+
+    - name: Copy AWS credentials
+      ansible.builtin.copy:
+        src: ./.aws/credentials
+        dest: /home/vagrant/.aws/credentials
+        owner: vagrant
+        group: vagrant
+        mode: '0600'
+
     - name: Create Kafka systemd service
       become: true
       ansible.builtin.copy:
