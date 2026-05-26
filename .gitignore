@@ -1,8 +1,8 @@
-# Secret variables
+# Secret vars
 .env
 **/.aws/credentials
 
-# Vagrant files for managing VMs
+# Vagrant
 .vagrant/
 
 # Packer

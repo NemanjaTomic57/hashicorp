@@ -18,7 +18,7 @@ variable "ubuntu_iso_url" {
 
 variable "ubuntu_vm_name" {
   type    = string
-  default = "ubuntu.qcow2"
+  default = "ubuntu"
 }
 
 # Rocky Linux
@@ -41,5 +41,5 @@ variable "rockylinux_iso_url" {
 
 variable "rockylinux_vm_name" {
   type    = string
-  default = "rockylinux.qcow2"
+  default = "rockylinux"
 }

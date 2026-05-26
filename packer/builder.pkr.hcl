@@ -11,7 +11,10 @@ locals {
 }
 
 build {
-  sources = ["source.qemu.rockylinux"]
+  sources = [
+    # "source.qemu.rockylinux",
+    "source.virtualbox-iso.rockylinux",
+  ]
 
   # Linux Shell scripts
   # Install updates and reboot
@@ -59,7 +62,8 @@ build {
   }
 
   post-processor "vagrant" {
-    compression_level = 9
-    output            = "${path.root}/builds/vagrant/rockylinux.{{ .Provider }}.box"
+    compression_level   = 9
+    keep_input_artifact = false
+    output              = "${path.root}/builds/vagrant/${var.rockylinux_vm_name}.{{ .Provider }}.box"
   }
 }
