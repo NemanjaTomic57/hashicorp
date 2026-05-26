@@ -4,6 +4,3 @@
 
 # Vagrant files for managing VMs
 .vagrant/
-
-# Code examples
-bento/
