@@ -2,9 +2,28 @@
 autoinstall:
   version: 1
   identity:
-    hostname: ubuntu
-    username: nemo
-    password: '$6$mGJCeNOIS20IHTLf$7msu8XBX07wQSUOwbvv.H6GyvKLfDio3JVSNOQYjN93eHI82GB3L0azKOfr.DBI8W8PI8N2/NvP0.wcyNOIiy1'
+    hostname: vagrant
+    username: vagrant
+    password: '$6$7uJ56pjH6ZrAxrXU$26TZTR11Xl0V65.hj5UlDoBg/cBCsjB30oCoGuMLu6jXfmRC1Zls6czuPtbElu2inI1T0QAbrHy8UXYe2.keD/'
+  early-commands:
+    # otherwise packer tries to connect and exceed max attempts:
+    - systemctl stop ssh.service
+    - systemctl stop ssh.socket
   ssh:
     install-server: yes
     allow-pw: yes
+  late-commands:
+    - |
+      if [ -f /target/etc/netplan/00-installer-config.yaml ]; then
+        sed -i "s/dhcp4: true/&\n      dhcp-identifier: mac/" /target/etc/netplan/00-installer-config.yaml
+      fi
+    - echo 'vagrant ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/vagrant
+    # Enable hyper-v daemons only if using hyper-v virtualization
+    - |
+      if [ $(virt-what) == "hyperv" ]; then
+        apt-get update && apt-get install -y hyperv-daemons linux-tools-$(uname -r) linux-cloud-tools-$(uname -r) linux-cloud-tools-common cifs-utils
+        systemctl enable hypervvssd
+        systemctl enable hypervkvpd
+        systemctl start hypervvssd
+        systemctl start hypervkvpd
+      fi

@@ -168,8 +168,7 @@ build {
   provisioner "powershell" {
     elevated_password = local.elevated_password
     elevated_user     = local.elevated_user
-    scripts = [
-      "${path.root}/scripts/windows/provision.ps1",
+    scripts = ["${path.root}/scripts/windows/provision.ps1",
       "${path.root}/scripts/windows/remove-one-drive-and-teams.ps1",
       "${path.root}/scripts/windows/remove-apps.ps1",
       "${path.root}/scripts/windows/remove-capabilities.ps1",
