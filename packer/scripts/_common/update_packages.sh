@@ -1,5 +1,14 @@
 #!/bin/sh -eux
 
+OS_NAME=$(uname -s)
+if [ -f /etc/os-release ]; then
+  OS_ID=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+fi
+
+if [ -d /etc/sudoers.d ]; then
+  echo 'Defaults:%sudo env_keep += "PACKER_*"' >> /etc/sudoers.d/_packer_env
+fi
+
 echo "installing updates"
 if [ -f "/bin/dnf" ]; then
   dnf -y upgrade
