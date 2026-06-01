@@ -109,6 +109,44 @@ source "qemu" "rockylinux" {
   vm_name          = var.rockylinux_vm_name
 }
 
+source "virtualbox-iso" "debian" {
+  # QEMU specific options
+  chipset                   = local.vbox_chipset
+  firmware                  = local.vbox_firmware
+  gfx_accelerate_3d         = local.vbox_gfx_accelerate_3d
+  gfx_controller            = local.vbox_gfx_controller
+  gfx_vram_size             = local.vbox_gfx_vram_size
+  guest_additions_path      = local.vbox_guest_additions_path
+  guest_additions_mode      = local.vbox_guest_additions_mode
+  guest_additions_interface = local.vbox_guest_additions_interface
+  guest_os_type             = local.vbox_guest_os_type
+  hard_drive_interface      = local.vbox_hard_drive_interface
+  iso_interface             = local.vbox_iso_interface
+  nested_virt               = local.vbox_nested_virt
+  nic_type                  = local.vbox_nic_type
+  rtc_time_base             = local.vbox_rtc_time_base
+  usb                       = local.vbox_usb
+  vboxmanage                = local.vboxmanage
+  virtualbox_version_file   = local.virtualbox_version_file
+  # Source block common options
+  boot_command     = var.debian_boot_command
+  boot_wait        = local.boot_wait
+  communicator     = local.communicator
+  cpus             = local.cpus
+  disk_size        = local.disk_size
+  headless         = local.headless
+  http_directory   = local.http_directory
+  memory           = local.memory
+  output_directory = "${local.output_directory}-debian-virtualbox"
+  shutdown_command = local.shutdown_command
+  ssh_password     = local.ssh_password
+  ssh_timeout      = local.ssh_timeout
+  ssh_username     = local.ssh_username
+  iso_checksum     = var.debian_iso_checksum
+  iso_url          = var.debian_iso_url
+  vm_name          = var.debian_vm_name
+}
+
 source "virtualbox-iso" "rockylinux" {
   # QEMU specific options
   chipset                   = local.vbox_chipset

@@ -21,6 +21,29 @@ variable "ubuntu_vm_name" {
   default = "ubuntu"
 }
 
+# Debian
+variable "debian_boot_command" {
+  type = list(string)
+  default = [
+    "<wait>e<wait><down><down><down><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><right><wait>install <wait> preseed/url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/debian/preseed.cfg <wait>debian-installer=en_US.UTF-8 <wait>auto <wait>locale=en_US.UTF-8 <wait>kbd-chooser/method=us <wait>keyboard-configuration/xkb-keymap=us <wait>netcfg/get_hostname={{ .Name }} <wait>netcfg/get_domain=vagrantup.com <wait>fb=false <wait>debconf/frontend=noninteractive <wait>console-setup/ask_detect=false <wait>console-keymaps-at/keymap=us <wait>grub-installer/bootdev=default <wait><f10><wait>"
+  ]
+}
+
+variable "debian_iso_checksum" {
+  type    = string
+  default = "file:https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/SHA256SUMS"
+}
+
+variable "debian_iso_url" {
+  type    = string
+  default = "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-13.5.0-amd64-netinst.iso"
+}
+
+variable "debian_vm_name" {
+  type    = string
+  default = "debian"
+}
+
 # Rocky Linux
 variable "rockylinux_boot_command" {
   type = list(string)

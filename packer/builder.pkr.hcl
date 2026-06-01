@@ -12,8 +12,10 @@ locals {
 
 build {
   sources = [
+    # "source.qemu.ubuntu",
     # "source.qemu.rockylinux",
-    "source.virtualbox-iso.rockylinux",
+    "source.virtualbox-iso.debian",
+    # "source.virtualbox-iso.rockylinux",
   ]
 
   # Linux Shell scripts
