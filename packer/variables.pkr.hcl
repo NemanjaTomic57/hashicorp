@@ -59,7 +59,7 @@ variable "rockylinux_iso_checksum" {
 
 variable "rockylinux_iso_url" {
   type    = string
-  default = "https://download.rockylinux.org/pub/rocky/10/isos/x86_64/Rocky-10.1-x86_64-boot.iso"
+  default = "https://download.rockylinux.org/pub/rocky/10/isos/x86_64/Rocky-10.2-x86_64-boot.iso"
 }
 
 variable "rockylinux_vm_name" {
