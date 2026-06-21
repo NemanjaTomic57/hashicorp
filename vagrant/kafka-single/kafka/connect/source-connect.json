@@ -1,9 +1,0 @@
-{
-  "name": "customers-source",
-  "config": {
-    "connector.class": "FileStreamSource",
-    "tasks.max": "1",
-    "file": "/tmp/customers.txt",
-    "topic": "customers"
-  }
-}

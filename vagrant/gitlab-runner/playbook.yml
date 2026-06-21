@@ -24,7 +24,7 @@
       ansible.builtin.service:
         name: docker
         state: started
-        enabled: yes
+        enabled: true
 
     - name: Install GitLab Runner binary
       ansible.builtin.get_url:
@@ -36,7 +36,7 @@
       ansible.builtin.user:
         name: gitlab-runner
         shell: /bin/bash
-        create_home: yes
+        create_home: true
         comment: "GitLab Runner"
 
     - name: Check if gitlab-runner service exists
@@ -48,10 +48,10 @@
       ansible.builtin.command: >
         gitlab-runner install --user=gitlab-runner --working-directory=/home/gitlab-runner
       when: not runner_service.stat.exists
+      changed_when: true
 
     - name: Ensure GitLab Runner is running
       ansible.builtin.service:
         name: gitlab-runner
         state: started
-        enabled: yes
-
+        enabled: true
