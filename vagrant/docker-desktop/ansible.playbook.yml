@@ -62,7 +62,7 @@
     nvim_archive: nvim-linux-x86_64.tar.gz
     nvim_url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
     nvim_install_dir: /opt/nvim-linux-x86_64
-    nvim_config_src: /home/nemo/.config/nvim/
+    nvim_config_src: /home/ntomic/.config/nvim/
     go_version: 1.26.2
 
   tasks:

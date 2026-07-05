@@ -1,19 +1,5 @@
 ---
-- name: Install gnome desktop environment
-  hosts: all
-  become: true
-
-  tasks:
-    - name: Install apt packages
-      ansible.builtin.apt:
-        name:
-          - gnome
-          - gdm3
-        update_cache: true
-        cache_valid_time: 3600
-
-
-- name: Install kind on Debian
+- name: Install kind
   hosts: all
   become: true
 
@@ -171,7 +157,7 @@
     nvim_archive: nvim-linux-x86_64.tar.gz
     nvim_url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
     nvim_install_dir: /opt/nvim-linux-x86_64
-    nvim_config_src: /home/nemo/.config/nvim/
+    nvim_config_src: /home/ntomic/.config/nvim/
     go_version: 1.26.3
     go_checksum: 2b2cfc7148493da5e73981bffbf3353af381d5f93e789c82c79aff64962eb556
 
@@ -235,10 +221,10 @@
         mode: '0755'
 
     - name: Sync Neovim configuration
-      ansible.posix.synchronize:
+      ansible.builtin.copy:
         src: "{{ nvim_config_src }}/"
         dest: /home/vagrant/.config/nvim/
-        delete: true
+        mode: "0666"
 
     - name: Install Rust (rustup)
       ansible.builtin.shell: |

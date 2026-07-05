@@ -2,11 +2,13 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "debian-13"
+  config.vm.box = "ntomic/trixie"
+
+  config.vm.network("private_network", ip: "192.168.56.10")
 
   config.vm.provider("virtualbox") do |v|
-    v.memory = 32768
-    v.cpus = 6
+    v.memory = 8192
+    v.cpus = 4
   end
 
   config.vm.provision("ansible") do |ansible|
