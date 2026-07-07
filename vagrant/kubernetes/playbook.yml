@@ -47,7 +47,7 @@
       changed_when: true
 
 
-- name: Install Docker
+- name: Install Docker and create Kind cluster
   hosts: all
   become: true
 
@@ -102,6 +102,17 @@
         state: started
         enabled: true
 
+    - name: Create Kind cluster
+      ansible.builtin.command: kind create cluster --config /vagrant/kind/kind-config.yml --name cgi
+      args:
+        creates: /root/.kube/config
+
+    - name: Fetch kubeconfig from VM
+      ansible.builtin.fetch:
+        src: /root/.kube/config
+        dest: "/home/ntomic/.kube/config"
+        flat: true
+
 
 - name: Install kubectl
   hosts: all
@@ -151,123 +162,12 @@
         creates: /usr/local/bin/helm
 
 
-- name: Install and configure Neovim
+- name: Install Calico CNI
   hosts: all
-  vars:
-    nvim_archive: nvim-linux-x86_64.tar.gz
-    nvim_url: https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
-    nvim_install_dir: /opt/nvim-linux-x86_64
-    nvim_config_src: /home/ntomic/.config/nvim/
-    go_version: 1.26.3
-    go_checksum: 2b2cfc7148493da5e73981bffbf3353af381d5f93e789c82c79aff64962eb556
+  become: true
 
   tasks:
-    - name: Install apt dependencies
-      become: true
-      ansible.builtin.apt:
-        name:
-          - rsync
-          - git
-          - luarocks
-          - python3-pip
-          - npm
-          - ruby-full
-          - php
-          - composer
-          - default-jdk
-          - ripgrep
-          - fd-find
-          - tree-sitter-cli
-        update_cache: true
-        cache_valid_time: 3600
-
-    - name: Check if nvim is already installed
-      ansible.builtin.stat:
-        path: "{{ nvim_install_dir }}/bin/nvim"
-      register: nvim_installed
-
-    - name: Install Neovim
-      when: not nvim_installed.stat.exists
-      block:
-        - name: Download Neovim archive
-          ansible.builtin.get_url:
-            url: "{{ nvim_url }}"
-            dest: "/tmp/{{ nvim_archive }}"
-            mode: '0644'
-
-        - name: Remove existing Neovim directory
-          ansible.builtin.file:
-            path: "{{ nvim_install_dir }}"
-            state: absent
-
-        - name: Extract Neovim archive
-          become: true
-          ansible.builtin.unarchive:
-            src: "/tmp/{{ nvim_archive }}"
-            dest: /opt
-            remote_src: true
-
-    - name: Add Neovim to global PATH
-      become: true
-      ansible.builtin.copy:
-        dest: /etc/profile.d/nvim.sh
-        content: 'export PATH="/opt/nvim-linux-x86_64/bin:$PATH"'
-        mode: '0755'
-
-    - name: Ensure Neovim config parent directory exists
-      ansible.builtin.file:
-        path: /home/vagrant/.config
-        state: directory
-        mode: '0755'
-
-    - name: Sync Neovim configuration
-      ansible.builtin.copy:
-        src: "{{ nvim_config_src }}/"
-        dest: /home/vagrant/.config/nvim/
-        mode: "0666"
-
-    - name: Install Rust (rustup)
-      ansible.builtin.shell: |
-        set -o pipefail
-        curl https://sh.rustup.rs -sSf | sh -s -- -y
-      args:
-        creates: /home/vagrant/.cargo/bin/cargo
-
-    - name: Add cargo to global PATH
-      become: true
-      ansible.builtin.copy:
-        dest: /etc/profile.d/rust.sh
-        content: 'export PATH="/home/vagrant/.cargo/bin:$PATH"'
-        mode: "0755"
-
-    - name: Download Go
-      ansible.builtin.get_url:
-        url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
-        dest: /tmp/go.tar.gz
-        mode: "0644"
-        checksum: "sha256:{{ go_checksum }}"
-
-    - name: Extract Go
-      become: true
-      ansible.builtin.unarchive:
-        src: /tmp/go.tar.gz
-        dest: /usr/local
-        remote_src: true
-      args:
-        creates: /usr/local/go
-
-    - name: Add Go to PATH
-      become: true
-      ansible.builtin.copy:
-        dest: /etc/profile.d/go.sh
-        content: |
-          export PATH=$PATH:/usr/local/go/bin
-          export PATH=$PATH:/home/vagrant/go/bin
-        mode: "0555"
-
-    - name: Install Julia
-      ansible.builtin.shell: |
-        set -o pipefail
-        curl -fsSL https://install.julialang.org | sh -s -- -y
-      args:
-        creates: /home/vagrant/.juliaup/bin/julia
+    - name: Install Calico CRD
+      kubernetes.core.k8s:
+        state: present
+        src: ./calico/v1_crd_projectcalico_org.yaml

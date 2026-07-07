@@ -10,8 +10,4 @@ Vagrant.configure("2") do |config|
     v.memory = 8192
     v.cpus = 4
   end
-
-  config.vm.provision("ansible") do |ansible|
-    ansible.playbook = "playbook.yml"
-  end
 end
