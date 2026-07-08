@@ -1,8 +1,23 @@
 ---
+- name: Update and upgrade all packages
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install apt dependencies
+      ansible.builtin.apt:
+        name:
+          python3-kubernetes
+        state: present
+
 - name: Install kind
   hosts: all
   become: true
-
   vars:
     kind_version: "v0.31.0"
 
@@ -110,7 +125,7 @@
     - name: Fetch kubeconfig from VM
       ansible.builtin.fetch:
         src: /root/.kube/config
-        dest: "/home/ntomic/.kube/config"
+        dest: /home/ntomic/.kube/config
         flat: true
 
 
@@ -167,7 +182,26 @@
   become: true
 
   tasks:
-    - name: Install Calico CRD
+    - name: Install Calico
       kubernetes.core.k8s:
         state: present
-        src: ./calico/v1_crd_projectcalico_org.yaml
+        src: /vagrant/calico/v1_crd_projectcalico_org.yaml
+
+    - name: Install Calico CNI
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/calico/tigera-operator.yaml
+
+    - name: Install Calico CNI
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/calico/custom-resources.yaml
+
+    - name: Install Calico CNI
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ item }}"
+      loop:
+        - /vagrant/calico/v1_crd_projectcalico_org.yaml
+        - /vagrant/calico/tigera-operator.yaml
+        - /vagrant/calico/custom-resources.yaml
