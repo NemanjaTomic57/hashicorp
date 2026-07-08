@@ -15,6 +15,7 @@
           python3-kubernetes
         state: present
 
+
 - name: Install kind
   hosts: all
   become: true
@@ -187,21 +188,171 @@
         state: present
         src: /vagrant/calico/v1_crd_projectcalico_org.yaml
 
-    - name: Install Calico CNI
+    - name: Install Calico operator
       kubernetes.core.k8s:
         state: present
         src: /vagrant/calico/tigera-operator.yaml
 
-    - name: Install Calico CNI
+    - name: Deploy Calico resources
       kubernetes.core.k8s:
         state: present
         src: /vagrant/calico/custom-resources.yaml
 
-    - name: Install Calico CNI
+
+- name: Install Traefik prerequisites
+  hosts: all
+  become: true
+  vars:
+    traefik_namespace: traefik
+    cert_dir: /opt/traefik-tls
+
+  tasks:
+    - name: Add Traefik Helm repository
+      kubernetes.core.helm_repository:
+        name: traefik
+        repo_url: https://traefik.github.io/charts
+
+    - name: Update Helm repositories
+      ansible.builtin.command:
+        cmd: helm repo update
+      changed_when: false
+
+    - name: Create Traefik namespace
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Namespace
+        name: "{{ traefik_namespace }}"
+        state: present
+
+    - name: Create certificate directory
+      ansible.builtin.file:
+        path: "{{ cert_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Generate self-signed certificate
+      ansible.builtin.command:
+        cmd: >
+          openssl req -x509 -nodes -days 365
+          -newkey rsa:2048
+          -keyout {{ cert_dir }}/tls.key
+          -out {{ cert_dir }}/tls.crt
+          -subj "/CN=*.docker.localhost"
+      args:
+        creates: "{{ cert_dir }}/tls.crt"
+
+    - name: Create or update TLS secret
+      ansible.builtin.shell: |
+        kubectl create secret tls local-selfsigned-tls \
+          --cert={{ cert_dir }}/tls.crt \
+          --key={{ cert_dir }}/tls.key \
+          --namespace default \
+          --dry-run=client -o yaml | kubectl apply -f -
+      changed_when: false
+
+    - name: Install Traefik
+      kubernetes.core.helm:
+        name: traefik
+        chart_ref: traefik/traefik
+        release_namespace: "{{ traefik_namespace }}"
+        create_namespace: true
+        values_files:
+          - /vagrant/helm/traefik-values.yml
+
+
+- name: Run cloud-provider-kind
+  hosts: all
+  become: true
+  vars:
+      cloud_provider_kind_url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.11.1/cloud-provider-kind_0.11.1_linux_amd64.tar.gz
+      cloud_provider_kind_sha256: 5454ba985c65ee3ab560192b8e4db799417ee646ffd7222e23fb79515926cc6c
+
+  tasks:
+    - name: Download cloud-provider-kind
+      ansible.builtin.get_url:
+        url: "{{ cloud_provider_kind_url }}"
+        dest: /tmp/cloud-provider-kind.tar.gz
+        checksum: "sha256:{{ cloud_provider_kind_sha256 }}"
+        mode: "0644"
+
+    - name: Create systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/cloud-provider-kind.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Cloud Provider KIND
+          After=network-online.target docker.service
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/cloud-provider-kind
+          Restart=always
+          RestartSec=5
+          Environment=KUBECONFIG=/root/.kube/config
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable and start cloud-provider-kind
+      ansible.builtin.systemd:
+        name: cloud-provider-kind
+        enabled: true
+        state: started
+
+
+- name: Deploy webserver
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Apply webserver deployment
       kubernetes.core.k8s:
         state: present
-        src: "{{ item }}"
-      loop:
-        - /vagrant/calico/v1_crd_projectcalico_org.yaml
-        - /vagrant/calico/tigera-operator.yaml
-        - /vagrant/calico/custom-resources.yaml
+        src: /vagrant/kustomize/webserver.yml
+
+    - name: Apply webserver service
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/kustomize/service.yml
+
+    - name: Apply webserver ingress
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/kustomize/ingress.yml
+
+
+- name: Install Go
+  hosts: all
+  vars:
+    go_version: 1.26.5
+    go_checksum: 5c2c3b16caefa1d968a94c1daca04a7ca301a496d9b086e17ad77bb81393f053
+
+  tasks:
+    - name: Download Go
+      ansible.builtin.get_url:
+        url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+        dest: /tmp/go.tar.gz
+        mode: "0644"
+        checksum: "sha256:{{ go_checksum }}"
+
+    - name: Extract Go
+      become: true
+      ansible.builtin.unarchive:
+        src: /tmp/go.tar.gz
+        dest: /usr/local
+        remote_src: true
+
+    - name: Add Go to PATH
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/profile.d/go.sh
+        content: |
+          export PATH=$PATH:/usr/local/go/bin
+          export PATH=$PATH:/home/vagrant/go/bin
+        mode: "0555"
