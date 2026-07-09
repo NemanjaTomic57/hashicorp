@@ -1,0 +1,144 @@
+---
+- name: Install Calico CNI
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Install Calico
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/calico/v1_crd_projectcalico_org.yaml
+
+    - name: Install Calico operator
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/calico/tigera-operator.yaml
+
+    - name: Deploy Calico resources
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/calico/custom-resources.yaml
+
+
+- name: Run cloud-provider-kind
+  hosts: all
+  become: true
+  vars:
+      cloud_provider_kind_url: https://github.com/kubernetes-sigs/cloud-provider-kind/releases/download/v0.11.1/cloud-provider-kind_0.11.1_linux_amd64.tar.gz
+      cloud_provider_kind_sha256: 5454ba985c65ee3ab560192b8e4db799417ee646ffd7222e23fb79515926cc6c
+
+  tasks:
+    - name: Download cloud-provider-kind
+      ansible.builtin.get_url:
+        url: "{{ cloud_provider_kind_url }}"
+        dest: /tmp/cloud-provider-kind.tar.gz
+        checksum: "sha256:{{ cloud_provider_kind_sha256 }}"
+        mode: "0644"
+
+    - name: Extract cloud-provider-kind binary
+      ansible.builtin.unarchive:
+        src: /tmp/cloud-provider-kind.tar.gz
+        dest: /usr/local/bin
+        remote_src: true
+        creates: /usr/local/bin/cloud-provider-kind
+        mode: "0755"
+
+    - name: Create systemd service
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/cloud-provider-kind.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Cloud Provider KIND
+          After=network-online.target docker.service
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/cloud-provider-kind
+          Restart=always
+          RestartSec=5
+          Environment=KUBECONFIG=/root/.kube/config
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable and start cloud-provider-kind
+      ansible.builtin.systemd:
+        name: cloud-provider-kind
+        enabled: true
+        state: started
+
+
+- name: Deploy Kubernetes manifests
+  hosts: all
+  become: true
+  vars:
+    tls_dir: /opt/tls
+    tls_secret_name: local-selfsigned-tls
+    tls_namespace: default
+
+  tasks:
+    - name: Add Metrics Server
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/kustomize/metrics-server.yaml
+
+    - name: Apply webserver deployment
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/kustomize/webserver.yml
+
+    - name: Apply webserver service
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/kustomize/service.yml
+
+    - name: Create TLS directory
+      ansible.builtin.file:
+        path: "{{ tls_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Generate private key and self-signed certificate
+      ansible.builtin.command:
+        cmd: >
+          openssl req
+          -newkey rsa:4096
+          -x509
+          -sha256
+          -days 365
+          -nodes
+          -out tls.crt
+          -keyout tls.key
+          -subj "/CN=*.local/"
+        chdir: "{{ tls_dir }}"
+      args:
+        creates: "{{ tls_dir }}/tls.crt"
+
+    - name: Create Kubernetes TLS secret
+      ansible.builtin.command:
+        cmd: >
+          kubectl create secret tls {{ tls_secret_name }}
+          --cert {{ tls_dir }}/tls.crt
+          --key {{ tls_dir }}/tls.key
+          --namespace {{ tls_namespace }}
+      register: kubectl_result
+      changed_when: "'created' in kubectl_result.stdout"
+      failed_when:
+        - kubectl_result.rc != 0
+        - "'already exists' not in kubectl_result.stderr"
+
+    - name: Apply webserver ingress
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/kustomize/ingress.yml
+
+    - name: Add horizontal pod autoscaler for webserver deployment
+      kubernetes.core.k8s:
+        state: present
+        src: /vagrant/kustomize/hpa.yml

@@ -4,24 +4,20 @@ kind: Ingress
 metadata:
   name: webserver-ingress
   namespace: default
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
 spec:
-  ingressClassName: traefik
-
   tls:
     - hosts:
-        - webserver.docker.localhost
+        - webserver.local
       secretName: local-selfsigned-tls
 
   rules:
-    - host: webserver.docker.localhost
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: webserver-service
-                port:
-                  number: 80
+  - host: webserver.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: webserver-service
+            port:
+              number: 80
