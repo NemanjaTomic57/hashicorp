@@ -30,4 +30,15 @@ build {
   sources = [
     "source.amazon-ebs.debian-trixie"
   ]
+
+  provisioner "shell" {
+    pause_before = "10s"
+    environment_vars = [
+      "DEBIAN_FRONTEND=noninteractive"
+    ]
+    scripts = [
+      "${path.root}/scripts/install-ssm-agent.sh",
+      "${path.root}/scripts/install-docker.sh"
+    ]
+  }
 }
