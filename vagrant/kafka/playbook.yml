@@ -54,73 +54,46 @@
         mode: "0755"
 
 
-# - name: Configure Kafka brokers
-#   gather_facts: false
-#   hosts: kafka
-#
-#   tasks:
-#     - name: Create Kafka directory
-#       ansible.builtin.file:
-#         path: "{{ kafka_config }}"
-#         state: directory
-#         mode: "0755"
-#         owner: vagrant
-#         group: vagrant
-#
-#     - name: Copy broker configuration
-#       template:
-#         src: ./templates/server.properties.j2
-#         dest: "{{ kafka_config_server }}"
-#         mode: "0644"
-#
-#     - name: Configure first broker
-#       shell: >
-#         {{ kafka_bin }}/kafka-storage.sh format
-#         --cluster-id {{ kafka_cluster_uuid }}
-#         --config {{ kafka_config_server }}
-#         --standalone
-#       when: inventory_hostname == groups['kafka'][0]
-#       args:
-#         creates: "{{ kafka_logs }}/meta.properties"
-#
-#     - name: Configure other two Kafka nodes
-#       shell: >
-#         {{ kafka_bin }}/kafka-storage.sh format
-#         --cluster-id {{ kafka_cluster_uuid }}
-#         --config {{ kafka_config_server }}
-#         --no-initial-controllers
-#       when: inventory_hostname != groups['kafka'][0]
-#       args:
-#         creates: "{{ kafka_logs }}/meta.properties"
-#
-#     - name: Start the Kafka servers
-#       shell: >
-#         {{ kafka_bin }}/kafka-server-start.sh -daemon {{ kafka_config_server }}
-#       changed_when: true
-#
-#     - name: Wait for Kafka controller listener to be ready
-#       wait_for:
-#         host: "{{ ansible_host }}"
-#         port: 9093
-#         delay: 5
-#         timeout: 10
-#
-#     - name: Get quorum status
-#       shell: |
-#         set -o pipefail
-#         {{ kafka_bin }}/kafka-metadata-quorum.sh \
-#         --bootstrap-server {{ hostvars[groups['kafka'][0]].ansible_host }}:9092 \
-#         describe --status | grep "CurrentVoters"
-#       changed_when: false
-#       register: quorum_status
-#
-#     - name: Reigster node-2 and node-3 as controllers
-#       shell: >
-#         {{ kafka_bin }}/kafka-metadata-quorum.sh
-#         --command-config {{ kafka_config_server }}
-#         --bootstrap-server {{ hostvars[groups['kafka'][0]].ansible_host }}:9092
-#         add-controller
-#       changed_when: true
-#       when:
-#         - inventory_hostname != groups['kafka'][0]
-#         - ansible_host not in quorum_status.stdout
+- name: Configure key store for SSL
+  hosts: kafka
+  vars:
+    keystore: /opt/keytool
+    keystorefile: '{{ keystore }}/keystore.pkcs12'
+    keystorepassword: "donau333"
+
+  tasks:
+    - name: Remove keytool directory
+      become: true
+      file:
+        path: '{{ keystore }}'
+        state: absent
+
+    - name: Create keytool directory
+      become: true
+      file:
+        path: '{{ keystore }}'
+        state: directory
+        mode: '0755'
+        owner: vagrant
+        group: vagrant
+
+    - name: Generate key pair for each broker
+      command:
+        argv:
+          - keytool
+          - -keystore
+          - '{{ keystorefile }}'
+          - -storepass
+          - '{{ keystorepassword }}'
+          - -genkeypair
+          - -alias
+          - ' {{ inventory_hostname }}'
+          - -validity
+          - 360
+          - -keyalg
+          - RSA
+          - -dname
+          - CN=Nemanja Tomic, OU=CommitFlow, O=Nemanja Tomic, L=Blumberg, ST=Baden-Württemberg, C=DE
+          - -storetype
+          - pkcs12
+        creates: '{{ keystorefile }}'
