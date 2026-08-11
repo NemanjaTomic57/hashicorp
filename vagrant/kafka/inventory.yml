@@ -1,0 +1,22 @@
+all:
+  vars:
+    ansible_user: vagrant
+    ansible_ssh_common_args: -o StrictHostKeyChecking=no
+    kafka: /opt/kafka
+    kafka_logs: '{{ kafka }}/logs'
+    kafka_bin: '{{ kafka }}/bin'
+    kafka_config: '{{ kafka }}/config'
+    kafka_config_server: '{{ kafka_config }}/server.properties'
+    kafka_cluster_uuid: 9QRITYyyS2qeAIfDgxB3OA
+  children:
+    kafka:
+      hosts:
+        kafka-1:
+          ansible_host: 192.168.56.50
+          ansible_ssh_private_key_file: .vagrant/machines/kafka-1/virtualbox/private_key
+        kafka-2:
+          ansible_host: 192.168.56.51
+          ansible_ssh_private_key_file: .vagrant/machines/kafka-2/virtualbox/private_key
+        kafka-3:
+          ansible_host: 192.168.56.52
+          ansible_ssh_private_key_file: .vagrant/machines/kafka-3/virtualbox/private_key

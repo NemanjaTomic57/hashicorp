@@ -1,0 +1,24 @@
+# frozen_string_literal: true
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ntomic/trixie"
+
+  nodes = {
+    "kafka-1" => "192.168.56.50",
+    "kafka-2" => "192.168.56.51",
+    "kafka-3" => "192.168.56.52"
+  }
+
+  nodes.each do |name, ip|
+    config.vm.define(name) do |node|
+      node.vm.hostname = name
+      node.vm.network("private_network", ip: ip)
+
+      node.vm.provider("virtualbox") do |vb|
+        vb.name = name
+        vb.memory = 3072
+        vb.cpus = 2
+      end
+    end
+  end
+end
