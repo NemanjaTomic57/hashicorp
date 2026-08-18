@@ -1,13 +1,4 @@
-packer {
-  required_plugins {
-    amazon = {
-      source  = "github.com/hashicorp/amazon"
-      version = "~> 1"
-    }
-  }
-}
-
-data "amazon-ami" "al2023" {
+data "amazon-ami" "al2023_arm64" {
   owners      = ["137112412989"]
   most_recent = true
 
@@ -19,9 +10,9 @@ data "amazon-ami" "al2023" {
   }
 }
 
-source "amazon-ebs" "al2023" {
+source "amazon-ebs" "al2023_arm64" {
   region     = "eu-central-1"
-  source_ami = data.amazon-ami.al2023.id
+  source_ami = data.amazon-ami.al2023_arm64.id
 
   instance_type = "t4g.large"
   ssh_username  = "ec2-user"
@@ -33,14 +24,25 @@ build {
   name = "nat-instance"
 
   sources = [
-    "source.amazon-ebs.al2023",
+    "source.amazon-ebs.al2023_arm64",
   ]
+
+  provisioner "file" {
+    source      = "./files/cloudwatch-base.json"
+    destination = "/tmp/cloudwatch-base.json"
+  }
 
   provisioner "shell" {
     pause_before = "10s"
 
     scripts = [
-      "${path.root}/scripts/nat-instance-configuration.sh"
+      "${path.root}/scripts/cloudwatch-config.sh",
+    ]
+  }
+
+  provisioner "shell" {
+    scripts = [
+      "${path.root}/scripts/nat-config.sh",
     ]
   }
 }

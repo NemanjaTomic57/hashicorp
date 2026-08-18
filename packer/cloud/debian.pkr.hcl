@@ -1,19 +1,30 @@
 #######################################
-# Required Plugins
+# Debian 13 AMIs
 #######################################
 
-packer {
-  required_plugins {
-    amazon = {
-      source  = "github.com/hashicorp/amazon"
-      version = "~> 1"
-    }
+data "amazon-ami" "debian_bookworm_x86_64" {
+  owners      = ["136693071363"]
+  most_recent = true
+
+  filters = {
+    name                = "debian-12-amd64-*"
+    architecture        = "x86_64"
+    virtualization-type = "hvm"
+    root-device-type    = "ebs"
   }
 }
 
-#######################################
-# Debian 13 AMIs
-#######################################
+data "amazon-ami" "debian_bookworm_arm64" {
+  owners      = ["136693071363"]
+  most_recent = true
+
+  filters = {
+    name                = "debian-12-arm64-*"
+    architecture        = "arm64"
+    virtualization-type = "hvm"
+    root-device-type    = "ebs"
+  }
+}
 
 data "amazon-ami" "debian_trixie_x86_64" {
   owners      = ["136693071363"]
@@ -43,6 +54,26 @@ data "amazon-ami" "debian_trixie_arm64" {
 # Build Sources
 #######################################
 
+source "amazon-ebs" "debian_bookworm_x86_64" {
+  region     = "eu-central-1"
+  source_ami = data.amazon-ami.debian_bookworm_x86_64.id
+
+  instance_type = "t3.large"
+  ssh_username  = "admin"
+
+  ami_name = "debian-bookworm-x86_64-{{timestamp}}"
+}
+
+source "amazon-ebs" "debian_bookworm_arm64" {
+  region     = "eu-central-1"
+  source_ami = data.amazon-ami.debian_bookworm_arm64.id
+
+  instance_type = "t4g.large"
+  ssh_username  = "admin"
+
+  ami_name = "debian-bookworm-arm64-{{timestamp}}"
+}
+
 source "amazon-ebs" "debian_trixie_x86_64" {
   region     = "eu-central-1"
   source_ami = data.amazon-ami.debian_trixie_x86_64.id
@@ -71,16 +102,27 @@ build {
   name = "debian-trixie"
 
   sources = [
-    "source.amazon-ebs.debian_trixie_x86_64",
-    "source.amazon-ebs.debian_trixie_arm64",
+    "source.amazon-ebs.debian_bookworm_x86_64",
+    "source.amazon-ebs.debian_bookworm_arm64"
   ]
+
+  provisioner "file" {
+    source      = "./files/cloudwatch-base.json"
+    destination = "/tmp/cloudwatch-base.json"
+  }
 
   provisioner "shell" {
     pause_before = "10s"
 
     scripts = [
-      "${path.root}/scripts/ssm-agent-installation.sh",
-      "${path.root}/scripts/docker-installation.sh",
+      "${path.root}/scripts/cloudwatch-config.sh",
+    ]
+  }
+
+  provisioner "shell" {
+    scripts = [
+      "${path.root}/scripts/ssm-agent-install.sh",
+      "${path.root}/scripts/docker-install.sh",
     ]
   }
 }
