@@ -23,9 +23,7 @@ source "amazon-ebs" "al2023_arm64" {
 build {
   name = "nat-instance"
 
-  sources = [
-    "source.amazon-ebs.al2023_arm64",
-  ]
+  sources = ["source.amazon-ebs.al2023_arm64"]
 
   provisioner "file" {
     source      = "./files/cloudwatch-base.json"
@@ -33,7 +31,8 @@ build {
   }
 
   provisioner "shell" {
-    pause_before = "10s"
+    pause_before    = "10s"
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
 
     scripts = [
       "${path.root}/scripts/cloudwatch-config.sh",

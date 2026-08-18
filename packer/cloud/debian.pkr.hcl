@@ -101,10 +101,7 @@ source "amazon-ebs" "debian_trixie_arm64" {
 build {
   name = "debian-trixie"
 
-  sources = [
-    "source.amazon-ebs.debian_bookworm_x86_64",
-    "source.amazon-ebs.debian_bookworm_arm64"
-  ]
+  sources = ["source.amazon-ebs.debian_bookworm_arm64"]
 
   provisioner "file" {
     source      = "./files/cloudwatch-base.json"
@@ -112,7 +109,8 @@ build {
   }
 
   provisioner "shell" {
-    pause_before = "10s"
+    pause_before    = "10s"
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
 
     scripts = [
       "${path.root}/scripts/cloudwatch-config.sh",
