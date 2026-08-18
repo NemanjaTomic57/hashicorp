@@ -2,11 +2,7 @@
 set -euo pipefail
 
 # Installing iptables services
-if command -v dnf >/dev/null 2>&1; then
-  sudo dnf install -y iptables-services net-tools
-else
-  sudo yum install -y iptables-services net-tools
-fi
+sudo dnf install -y iptables-services net-tools
 
 # Enabling iptables service
 sudo systemctl enable iptables

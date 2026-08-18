@@ -40,7 +40,7 @@ build {
     pause_before = "10s"
 
     scripts = [
-      "${path.root}/scripts/configure-nat-instance.sh"
+      "${path.root}/scripts/nat-instance-configuration.sh"
     ]
   }
 }

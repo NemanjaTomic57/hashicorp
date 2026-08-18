@@ -79,8 +79,8 @@ build {
     pause_before = "10s"
 
     scripts = [
-      "${path.root}/scripts/install-ssm-agent.sh",
-      "${path.root}/scripts/install-docker.sh",
+      "${path.root}/scripts/ssm-agent-installation.sh",
+      "${path.root}/scripts/docker-installation.sh",
     ]
   }
 }
