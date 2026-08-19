@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
+
+if [[ ! -r /etc/os-release ]]; then
+    echo "Unable to determine operating system."
+    exit 1
+fi
+
+# shellcheck disable=SC1091
+source /etc/os-release
+
+if [[ "${ID}" != "amzn" || "${VERSION_ID}" != "2023" ]]; then
+    echo "Skipping NAT configuration: Amazon Linux 2023 required."
+    exit 0
+fi
 
 # Installing iptables services
 sudo dnf install -y iptables-services net-tools

@@ -1,4 +1,19 @@
-#!/bin/bash -xeu
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ ! -r /etc/os-release ]]; then
+  echo "Unable to determine operating system."
+  exit 1
+fi
+
+# shellcheck disable=1091
+source /etc/os-release
+
+if [[ "${ID}" != "debian" ]]; then
+  echo "Skipping Docker installation: unsupported OS '${ID}'."
+  exit 0
+fi
 
 # Add Docker's official GPG key:
 sudo apt update

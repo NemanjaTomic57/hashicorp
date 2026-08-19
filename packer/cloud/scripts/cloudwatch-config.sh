@@ -56,7 +56,7 @@ elif [[ -f "/usr/bin/apt-get" ]]; then
 
   AGENT_URL="https://amazoncloudwatch-agent.s3.amazonaws.com/debian/arm64/latest/amazon-cloudwatch-agent.deb"
   SIG_URL="https://amazoncloudwatch-agent.s3.amazonaws.com/debian/arm64/latest/amazon-cloudwatch-agent.deb.sig"
-  KEY_URL="https://amazon-cloudwatch-agent.s3.amazonaws.com/assets/amazon-cloudwatch-agent.gpg"
+  KEY_URL="https://amazoncloudwatch-agent.s3.amazonaws.com/assets/amazon-cloudwatch-agent.gpg"
 
   WORK_DIR="/tmp/cloudwatch-agent-install"
   PACKAGE="${WORK_DIR}/amazon-cloudwatch-agent.deb"
