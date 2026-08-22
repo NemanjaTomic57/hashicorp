@@ -1,65 +1,60 @@
 #!/usr/bin/env bash
+# Installs the SSM Agent on Amazon Linux 2023 and Debian
 
 set -euo pipefail
 
-readonly SSM_AGENT_BASE_URL="https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest"
-readonly TMP_DIR="/tmp/ssm"
+SSM_AGENT_BASE_URL="https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest"
+TMP_DIR="/tmp/ssm"
 
-log() {
-  printf '[INFO] %s\n' "$*"
-}
-
-error() {
-  printf '[ERROR] %s\n' "$*" >&2
+if [[ "${EUID}" -ne 0 ]]; then
+  printf '[ERROR] This script must be run as root.\n' >&2
   exit 1
-}
+fi
 
-require_root() {
-  if [[ "${EUID}" -ne 0 ]]; then
-      error "This script must be run as root."
+if [[ ! -r /etc/os-release ]]; then
+  printf '[ERROR] /etc/os-release not found.\n' >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1091
+source /etc/os-release
+
+case "$(uname -m)" in
+  x86_64)
+    DEB_ARCH="debian_amd64"
+    RPM_ARCH="linux_amd64"
+    ;;
+
+  aarch64)
+    DEB_ARCH="debian_arm64"
+    RPM_ARCH="linux_arm64"
+    ;;
+
+  *)
+    printf '[ERROR] Unsupported architecture: %s\n' "$(uname -m)" >&2
+    exit 1
+    ;;
+esac
+
+mkdir -p "${TMP_DIR}"
+
+if [[ "${ID}" == "amzn" ]]; then
+
+  if [[ "${VERSION_ID}" != "2023" ]]; then
+    printf '[ERROR] Unsupported Amazon Linux version: %s\n' "${VERSION_ID}" >&2
+    exit 1
   fi
-}
 
-detect_architecture() {
-  case "$(uname -m)" in
-    x86_64)
-      DEB_ARCH="debian_amd64"
-      RPM_ARCH="linux_amd64"
-      ;;
+  URL="${SSM_AGENT_BASE_URL}/${RPM_ARCH}/amazon-ssm-agent.rpm"
 
-    aarch64)
-      DEB_ARCH="debian_arm64"
-      RPM_ARCH="linux_arm64"
-      ;;
+  dnf install \
+    --assumeyes \
+    "${URL}"
 
-    *)
-      error "Unsupported architecture: $(uname -m)"
-      ;;
-  esac
-}
+elif [[ "${ID}" == "debian" ]]; then
 
-detect_os() {
-  if [[ ! -r /etc/os-release ]]; then
-    error "/etc/os-release not found."
-  fi
-
-  # shellcheck disable=SC1091
-  source /etc/os-release
-
-  OS_ID="${ID}"
-  OS_VERSION="${VERSION_ID:-unknown}"
-
-  log "Detected OS: ${OS_ID} ${OS_VERSION}"
-  log "Detected architecture: $(uname -m)"
-}
-
-install_debian() {
-  local package="${TMP_DIR}/amazon-ssm-agent.deb"
-  local url="${SSM_AGENT_BASE_URL}/${DEB_ARCH}/amazon-ssm-agent.deb"
-
-  log "Installing SSM Agent from ${url}"
-
-  mkdir -p "${TMP_DIR}"
+  PACKAGE="${TMP_DIR}/amazon-ssm-agent.deb"
+  URL="${SSM_AGENT_BASE_URL}/${DEB_ARCH}/amazon-ssm-agent.deb"
 
   curl \
     --fail \
@@ -67,80 +62,25 @@ install_debian() {
     --show-error \
     --location \
     --retry 3 \
-    --output "${package}" \
-    "${url}"
+    --output "${PACKAGE}" \
+    "${URL}"
 
-  dpkg -i "${package}"
-}
+  dpkg -i "${PACKAGE}"
 
-install_amazon_linux() {
-  local url="${SSM_AGENT_BASE_URL}/${RPM_ARCH}/amazon-ssm-agent.rpm"
+else
+  printf '[INFO] Unsupported operating system: %s\n' "${ID}"
+  exit 0
+fi
 
-  log "Installing SSM Agent from ${url}"
+systemctl enable amazon-ssm-agent
+systemctl start amazon-ssm-agent
 
-  dnf install \
-    --assumeyes \
-    "${url}"
-}
+if ! systemctl is-active --quiet amazon-ssm-agent; then
+  systemctl status amazon-ssm-agent --no-pager || true
+  printf '[ERROR] SSM Agent is not running.\n' >&2
+  exit 1
+fi
 
-install_ssm_agent() {
-  case "${OS_ID}" in
-    debian|ubuntu)
-      install_debian
-      ;;
+rm -rf "${TMP_DIR}"
 
-    amzn)
-      case "${OS_VERSION}" in
-        2|2023)
-          install_amazon_linux
-          ;;
-
-        *)
-          error "Unsupported Amazon Linux version: ${OS_VERSION}"
-          ;;
-      esac
-      ;;
-
-    *)
-      error "Unsupported operating system: ${OS_ID}"
-      ;;
-  esac
-}
-
-enable_ssm_agent() {
-  log "Enabling SSM Agent"
-
-  systemctl enable amazon-ssm-agent
-  systemctl start amazon-ssm-agent
-}
-
-verify_ssm_agent() {
-  log "Verifying SSM Agent"
-
-  if ! systemctl is-active --quiet amazon-ssm-agent; then
-    systemctl status amazon-ssm-agent --no-pager || true
-    error "SSM Agent is not running."
-  fi
-
-  log "SSM Agent is running."
-}
-
-cleanup() {
-  rm -rf "${TMP_DIR}"
-}
-
-main() {
-  require_root
-  detect_architecture
-  detect_os
-
-  install_ssm_agent
-  enable_ssm_agent
-  verify_ssm_agent
-
-  cleanup
-
-  log "Amazon SSM Agent installation completed successfully."
-}
-
-main "$@"
+printf '[INFO] Amazon SSM Agent installation completed successfully.\n'
